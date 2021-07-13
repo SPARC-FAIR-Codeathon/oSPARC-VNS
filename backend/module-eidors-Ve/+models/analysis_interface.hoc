@@ -1,0 +1,616 @@
+
+/***************************************************
+ *
+ *  Extracellular Stimulation & Recording
+ *  
+ *  Author:   Calvin Eiber (ceiber@unimelb.edu.au)
+ *  Version:  0.4 (16-Nov-2020)
+ * 
+ *  This module contains the run control and data
+ *   capture procedures for the axon models and
+ *   provides a command-line interface for MATLAB 
+ *   to run simulations and specify what output is
+ *   generated.  
+ * 
+ *  Four high-level simulation routines are provided:
+ *  - find_threshold_external( init, lower, upper ) // uA // 
+ *  - find_threshold_internal( init, lower, upper ) // nA //
+ *  - run_stim( external (uA), internal (nA) )
+ *  - run_stim_sweep( FILE $cachepath/stimulus-levels_$thread.dat )
+ * 
+ * The default output mode for run_* can be overridden
+ *  by setting output_mode = 
+ *  1: output spikes (fastest)
+ *  2: output node Vm (slower)
+ *  3: output axon Im + Vm (slowest, all segments)
+ * 
+ * in MATLAB, this looks something like:  
+ * ! nrniv.exe axon.hoc -c "output_mode = 1" -c "run_stim(x,0)"
+ *
+ ***************************************************/
+ 
+print "from ../models import analysis"
+
+AP_time = -1
+AP_threshold = -20
+auto_quit = 1
+output_mode = 0
+stim_amp = 0
+verbose = 0
+stimulus_comments = 0
+delay = stim_time.x(0)
+
+start_output = -1
+multiple_stim_amp = 0 // are stim amplitudes defined differently for different fields? 
+
+objref VC_extrema
+
+VC_nodeID = 1 // which node is VClamp attached to? (settable)
+VC_parID  = 1 // which VClamp.amp[0,1,2] is updated? 
+VC_extrema = new Vector(4,0)
+
+objref f, fih
+
+f = new File()
+fih = new FInitializeHandler(0, "set_e_ext(0)") // update extracellular potential
+
+objref distalstim // for internal stimulus
+node[0] distalstim = new IClamp(0.1)
+distalstim.del = delay // ms //
+distalstim.dur = 0.4  // ms //
+distalstim.amp = 0  // nA //
+
+//
+//
+// FILE output functions
+//
+//
+
+proc setup_file() {
+
+  if (output_mode <= 0) { 
+	printf("Not generating %s (output_mode = %d)\n",output_file, output_mode)
+	return  	
+  }
+
+  printf("Writing file %s\n",output_file)
+  f.wopen(output_file)
+  f.printf("BEGIN secnames { \n" ) 
+  if (output_mode == 3) { 
+    forall f.printf("%s\n", secname()) 
+  } else {     
+    forall ifsec "node" f.printf("%s\n", secname()) 
+  }
+  f.printf("} END secnames \n" )
+
+  // f.printf("CONFIG mode=binary \n")
+}
+
+proc setup_block() {
+
+  if (output_mode <= 0) { return
+  } else if (output_mode == 1) { f.printf("\nBEGIN spikes { t node ")
+  } else if (output_mode == 2) { f.printf("\nBEGIN waves { t v[0] v[1] ... v[n]")
+  } else if (output_mode == 3) { f.printf("\nBEGIN wave_memcurrent { t v[0] i[0] v[1] i[1] ... v[n] i[n]")
+  } else if (output_mode == 4) { f.printf("\nBEGIN threshold { iStim t_spk n_spk")
+  } else if (output_mode == 5) { f.printf("\nBEGIN threshold { INTERNAL_iStim_nA t_spk_ms n_spk ")
+  							 
+  	output_mode = 4 // this is otherwise the same as output_mode 4
+  } else if (output_mode == 6) { f.printf("\nBEGIN VClamp_current { t v[%g] i[%g] ", VC_nodeID, VC_nodeID)
+  } else if (output_mode == 7) { f.printf("\nBEGIN VClamp_extrema { t_min i[%g]_min t_max i[%g]_max", VC_nodeID, VC_nodeID)
+  } else { printf("setup_block called with unknown output_mode %d\n",output_mode) }
+}
+
+objref spike_hystersis
+spike_hystersis = new Vector(axonnodes,0)
+
+proc output_block() { // called on each time-step by advance()
+
+  if (t < start_output) return
+
+  if (output_mode == 2) { f.printf("\n%g ",t) } // NODE vm requested
+  if (output_mode == 3) { f.printf("\n%g\t",t)  // ALL (vm + im) requested
+    forall {
+      // i_membrane(0.5) gives the current density in mA / cm2
+      // area is PI*diam*L in µm² and is given by area(0.5)
+
+
+      f.printf("%g\t",v(0.5))
+      
+	  // Compute membrane current
+	  // (mA/cm²)(µm²) = 1e-11 A 
+      f.printf("%g\t",i_membrane(0.5) * area(0.5) / 100) // in nA
+
+      if ( (v(0.5) > AP_threshold) && (AP_time < 0) && (t >= delay) ) {
+        AP_time = t
+      } 
+
+      // OLD code for dealing with 3d-embedded neurons: 
+      // for p = 0,n3d()-1 { // compute membrane current
+      
+      //  a = arc3d(p)/L
+      //  f.printf("\t%g,",i_membrane(a)*area(a)/100) // in nA
+      // 
+    } // loop over segments
+    return
+  } // output == 3
+
+  if (output_mode == 6) { // output_mode = 6 (VClamp full wave)
+
+	f.printf("\n%g\t",t)  // ALL (vm + im) requested
+
+	node[VC_nodeID] {
+      f.printf("%g\t",v(0.5))
+      f.printf("%g", distalstim.i)
+	}
+  	return
+  }
+
+  if (output_mode == 7 && (t > delay)) {
+	if (distalstim.i < VC_extrema.x[0]) { // minima
+	  VC_extrema.x[0] = distalstim.i
+	  VC_extrema.x[1] = t
+	}
+	if (distalstim.i > VC_extrema.x[2]) { // maxima 
+	  VC_extrema.x[2] = distalstim.i
+	  VC_extrema.x[3] = t
+	}
+  	return
+  }
+
+
+  for i=0,axonnodes-1 node[i] { // output_mode =/= 3: check nodes only
+    
+    // Full output nodes: [1] = Vm, [3] = Im
+    if (output_mode == 2) { f.printf("%g ",v(0.5)) } // NODE output requested
+
+    // for all modes, track first spike
+  	if ( (v(0.5) > AP_threshold) && (AP_time < 0) && (t >= delay) ) {
+  	  AP_time = t
+
+  	  if (verbose) { printf("%0.1f: spike @ t=%0.2f %s v=%0.2f \n",stim_amp, t, secname(), v(0.5)) }
+
+  	  if (output_mode == 4) { // minimal output requested
+	  	  if (stim_amp == 0)  {         f.printf("\n%0.8f\t%0.8f\t%s", distalstim.amp, AP_time, secname())
+	  	  } else if (distalstim.amp == 0) { f.printf("\n%0.8f\t%0.8f\t%s", stim_amp, AP_time, secname())
+	  	  } else {		 f.printf("\n%0.8f\t%0.8f\t%0.8f\t%s", stim_amp, distalstim.amp, AP_time, secname()) }
+      }
+  	} // if spike (once)
+
+    // for output_mode = "spikes" (1), track all spikes 
+    if (output_mode == 1) {
+      if ( v(0.5) > AP_threshold && spike_hystersis.x[i] == 0) {
+        spike_hystersis.x[i] = 1 // rising edge only! 
+        f.printf("\n%0.8f\t%s", t, secname())
+      } else if (v(0.5) < AP_threshold) {
+        spike_hystersis.x[i] = 0
+      }
+    } // if spike (is output_mode)
+  } // for "node"
+}
+
+proc close_block() { // 
+
+  if (output_mode == 1)        { f.printf("\n} END spikes\n" )
+  } else if (output_mode == 2) { f.printf("\n} END waves\n" )
+  } else if (output_mode == 3) { f.printf("\n} END wave_memcurrent \n")
+  } else if (output_mode == 4) { f.printf("\n} END threshold \n" ) 
+  } else if (output_mode == 6) { f.printf("\n} END VClamp_current \n" ) 
+  } else if (output_mode == 7) { 
+  	f.printf("\n%0.8f\t%0.8f\t%0.8f\t%0.8f\t",VC_extrema.x[0],VC_extrema.x[1],VC_extrema.x[2],VC_extrema.x[3])
+  	f.printf("\n} END VClamp_extrema \n" ) 
+  } else { printf("output_block called with unknown output_mode %d\n",output_mode) }
+
+  if ($1) f.close()
+}
+
+//
+//
+// HIGH-LEVEL simulation functions (MATLAB interface)
+//
+//
+
+proc find_threshold_external() { localobj bounds
+
+  print "Doing threshold determination"
+  // print "Data saved in thresholds.txt"
+  // print "Data saved in table as..."
+  // print "I_stim time vm_soma ... "
+
+  output_mode = 4
+  setup_file() // open new file
+  f.printf("\n// running find_threshold_external(%0.1f,%0.1f,%0.1f)\n",$1,$2,$3)
+  setup_block()
+
+  bounds = new Vector()
+  bounds.append($2,$3)  
+  stim_amp = $1
+  distalstim.amp = 0
+
+  while ( (bounds.x[1] - bounds.x[0]) / bounds.x[1] > 0.01 ) {
+
+  	t = 0
+	AP_time = -1
+    run()
+
+    if (AP_time == -1) { // no spike detected 
+      f.printf("\n%0.8f\tno spike",stim_amp)
+      bounds.x[0] = stim_amp
+      if (verbose) { printf("%0.1f: no spike\n",stim_amp) }
+    } else {
+	    bounds.x[1] = stim_amp
+	    if (verbose) { printf("%0.1f: spike @ t=%0.2f\n",stim_amp, AP_time) }
+    }
+
+	stim_amp = (bounds.x[0] + bounds.x[1])/2
+
+    if ( stim_amp > (0.02*$2 + 0.98*$3) ) {
+    	f.printf("\nabort THRESHOLD_HIGH")
+    	printf("abort THRESHOLD_HIGH at %0.2f\n", stim_amp)
+    	AP_time = -2
+		break
+    }
+	
+    if ( stim_amp < (0.98*$2 + 0.02*$3) ) {
+    	f.printf("\nabort THRESHOLD_LOW")
+    	printf("abort THRESHOLD_LOW at %0.8f\n", stim_amp)
+    	AP_time = -2
+		break
+    }
+  }
+  
+  close_block(1)
+  if ( AP_time > -2 ) printf("threshold=%0.8f\n", bounds.x[1])
+  if (auto_quit) quit()
+} // proc
+
+proc find_threshold_internal() { localobj bounds
+
+
+  print "Doing internal threshold"
+  // print "Data saved in thresholds.txt"
+  // print "Data saved in table as..."
+  // print "I_stim time vm_soma ... "
+
+  output_mode = 5
+
+  setup_file() // open new file
+  f.printf("\n// running find_threshold_internal(%0.4f,%0.4f,%0.4f)\n",$1,$2,$3)
+  setup_block() 
+  
+  bounds = new Vector()
+  bounds.append($2,$3)
+  distalstim.amp = $1 
+  stim_amp = 0.0
+
+  while ( (bounds.x[1] - bounds.x[0]) / bounds.x[1] > 0.01 ) {
+
+    t = 0
+    AP_time = -1
+    run()
+
+    if (AP_time == -1) { // no spike detected 
+      f.printf("\n%0.8f\tno spike",distalstim.amp)
+      bounds.x[0] = distalstim.amp
+
+      if (verbose) { printf("%0.1f: no spike\n",distalstim.amp) }
+    } else {
+      bounds.x[1] = distalstim.amp
+      if (verbose) { printf("%0.1f: spike\n",distalstim.amp) }
+    }
+
+    distalstim.amp = (bounds.x[0] + bounds.x[1])/2
+
+    if ( distalstim.amp > (0.01*$2 + 0.99*$3) ) {
+      f.printf("\nabort THRESHOLD_HIGH")
+      printf("abort THRESHOLD_HIGH at %0.2f\n", distalstim.amp)
+      AP_time = -2
+    break
+    }
+  
+    if ( distalstim.amp < (0.99*$2 + 0.01*$3) ) {
+      f.printf("\nabort THRESHOLD_LOW")
+      printf("abort THRESHOLD_LOW at %0.8f\n", distalstim.amp)
+      AP_time = -2
+    break
+    }
+  }
+
+  close_block(1)
+  if ( AP_time > -2 ) printf("threshold=%0.8f\n", bounds.x[1])
+  if (auto_quit) quit()
+} // proc
+
+proc run_stim() { // uA external, nA internal
+
+  stim_amp = $1        // usually uA //
+  distalstim.amp = $2  // nA //
+
+  if (output_mode == 0) {
+  	if ($1 == 0) { output_mode = 3   // Im + Vm output
+  	} else {	     output_mode = 2 } // Vm only 
+  }
+
+  setup_file() // open new file
+  f.printf("\n// running run_stim(%0.4f,%0.4f)\n",$1,$2)
+  setup_block() // add header
+  run()
+
+  if (AP_time >= 0) { printf("The axon fired at t=%0.4f\n", AP_time)
+  } else {            printf("The axon did not fire (t=-1)\n") }
+
+  close_block(1)
+  if (auto_quit) quit()
+} // proc
+
+proc run_multi_amplitude_sweep() { 
+
+
+  setup_file() // open new file
+  f.printf("\n// running run_stim_sweep() using")
+  f.printf("\n// %s",stim_filename)
+  f.printf("\n// Amplitudes defined in a %d x %d (fields x stimuli) matrix\n", $o1.nrow,$o1.ncol)
+  // f.printf("\n// (%d levels, range %f %f)\n",lvl.size(), lvl.x[0], lvl.x[lvl.size()-1])
+
+  delay = stim_time.x[0] // first defined stimulus timepoint
+  printf("Amplitudes r=%g c=%g Matrix\n",$o1.nrow,$o1.ncol)
+
+  for pp=0,$o1.ncol-1 {
+
+    // using "i" for the loop index caused issues with it colliding with 
+    // uses of "i" elsewhere ... BAD neuron. BAD!  
+    if (verbose) { printf("\t---loop i=%d [0,%d] begin\n",pp,$o1.ncol-1) }
+
+    distalstim = $o1.getcol(pp)
+
+    stim_amp = 0
+    printf("stimulus[0] = %0.1f\n",$o1.x[0][pp])
+
+    for cc=0,$o1.nrow-1 {
+    	f.printf("\n// [%d] stimulus = %0.4f \n",cc,$o1.x[cc][pp])	
+    }
+
+    setup_block()
+    
+    // cvode.event(0, "set_e_ext(0)")
+
+    t = 0
+    AP_time = -1
+    run()
+
+    if (AP_time == -1) { // no spike detected 
+      if (verbose) { printf("%0.1f: no spike\n",$o1.x[0][pp]) }
+      f.printf("\n// no spikes by t=%f",t)
+    } else {
+      if (verbose) { printf("%0.1f: spike at %f\n",$o1.x[0][pp], AP_time) }
+    }
+
+    close_block(0)
+
+    // if (verbose) { printf("\t---loop i=%d [0,%d] end\n",pp,lvl.size()-1) }
+  }
+  
+  f.close()
+  if (auto_quit) quit()
+
+}
+
+
+
+proc run_stim_sweep() { localobj fi,lvl
+
+  fi = new File()
+  lvl = new Vector()
+
+  // reusing stim_filename from before
+  sprint(stim_filename, "%s/stimulus-levels_%d.dat",cache_path,thread_id)
+  fi.ropen(stim_filename)
+  lvl.scanf(fi)
+  fi.close()
+
+  if ( (lvl.size() > 2) && (lvl.size() == (lvl.x[0]*lvl.x[1] + 2)) ) {
+  	printf("\n NOTE: Stimulus amplitudes configured as %d x %d matrix \n", lvl.x[0], lvl.x[1])
+  	lvl = new Matrix()
+
+    fi.ropen(stim_filename)
+    lvl.scanf(fi) // read in a second time as a matrix this time
+    fi.close()
+
+	multiple_stim_amp = 1
+  }  
+
+  if (output_mode == 0) output_mode = 1 // default: spikes
+
+  if (multiple_stim_amp){ 
+   	run_multi_amplitude_sweep(lvl)
+  	return
+  }  
+
+  setup_file() // open new file
+  f.printf("\n// running run_stim_sweep() using")
+  f.printf("\n// %s",stim_filename)
+  f.printf("\n// (%d levels, range %f %f)\n",lvl.size(), lvl.x[0], lvl.x[lvl.size()-1])
+
+  delay = stim_time.x[0] // first defined stimulus timepoint
+
+  for pp=0,lvl.size()-1 {
+
+    // using "i" for the loop index caused issues with it colliding with 
+    // uses of "i" elsewhere ... BAD neuron. BAD!  
+    // if (verbose) { printf("\t---loop i=%d [0,%d] begin\n",pp,lvl.size()-1) }
+
+    stim_amp = lvl.x[pp]
+    printf("stimulus = %0.1f\n",stim_amp)
+	f.printf("\n// stimulus = %0.4f \n",stim_amp)
+    setup_block()
+    
+    // cvode.event(0, "set_e_ext(0)")
+
+    t = 0
+    AP_time = -1
+    run()
+
+    if (AP_time == -1) { // no spike detected 
+      if (verbose) { printf("%0.1f: no spike\n",stim_amp) }
+      f.printf("\n// no spikes by t=%f",t)
+    } else {
+      if (verbose) { printf("%0.1f: spike at %f\n",stim_amp, AP_time) }
+    }
+
+    close_block(0)
+
+    // if (verbose) { printf("\t---loop i=%d [0,%d] end\n",pp,lvl.size()-1) }
+  }
+  
+  f.close()
+  if (auto_quit) quit()
+} // proc
+
+
+
+
+
+proc run_VoltageClamp() { localobj fi,lvl 
+
+
+  fi = new File()
+  lvl = new Vector()
+
+  // reusing stim_filename from before
+  sprint(stim_filename, "%s/stimulus-levels_%d.dat",cache_path,thread_id)
+  fi.ropen(stim_filename)
+  lvl.scanf(fi)
+  fi.close()
+
+  // node[VC_nodeID] distalstim = new VClamp(0.5)
+  node[VC_nodeID] distalstim = new SEClamp(0.5)
+  
+  distalstim.dur1 = stim_time.x[0]
+  distalstim.dur2 = stim_time.x[1] - stim_time.x[0]
+  distalstim.amp1 = -120  // mV //
+  distalstim.amp2 = 0  // mV //
+
+  delay = stim_time.x[0] // first defined stimulus timepoint
+
+  if (output_mode == 0) output_mode = 7 // default: clamp currents and voltages  
+
+  setup_file() // open new file
+  f.printf("\n// running run_VoltageClamp() using")
+  f.printf("\n// %s",stim_filename)
+  f.printf("\n// (%d levels, range %f %f)\n",lvl.size(), lvl.x[0], lvl.x[lvl.size()-1])
+
+  delay = stim_time.x[0] // first defined stimulus timepoint
+
+  for pp=0,lvl.size()-1 {
+    // using "i" for the loop index caused issues with it colliding with 
+    // uses of "i" elsewhere ... BAD neuron. BAD!  
+    if (verbose) { printf("\t---loop i=%d [0,%d] begin\n",pp,lvl.size()-1) }
+
+	stim_amp = 0.0
+
+	// distalstim.amp[VC_parID] = lvl.x[pp]
+	if (VC_parID == 0) { distalstim.amp1 = lvl.x[pp]
+	} else {             distalstim.amp2 = lvl.x[pp] }
+	
+
+	printf("VClamp [%d] = %0.1f\n",VC_parID,lvl.x[pp])
+
+	f.printf("\n// VClamp.amp[%d] = %0.4f \n",VC_parID,lvl.x[pp])
+    setup_block()
+
+    // cvode.event(0, "set_e_ext(0)")
+
+    t = 0
+    AP_time = -1
+    VC_extrema.fill(0) // set minimum maximum currents     
+    VC_extrema.x[0] = 1e12
+    VC_extrema.x[2] = -1e12
+    run()
+
+    if (AP_time == -1) { // no spike detected 
+      if (verbose) { printf("%0.1f: no spike\n",lvl.x[pp]) }
+      f.printf("\n// no spikes by t=%f",t)
+    } else {
+      if (verbose) { printf("%0.1f: spike at %f\n",lvl.x[pp], AP_time) }
+    }
+
+    close_block(0)
+
+    if (verbose) { printf("\t---loop i=%d [0,%d] end\n",pp,lvl.size()-1) }
+  }
+
+
+  f.close()
+  if (auto_quit) quit()  
+}
+
+//
+//
+// CORE / LOW-LEVEL simulation functions
+//
+//
+
+strdef next_event // so, from looking at some examples, the way the "sprint" 
+			      // command works is different from matlab. The correct synteax is:
+			      // sprint(OUT dest, "format", ... ) NOT dest = sprint("format", ...)
+			      // this is an old-school C-like pointer-based syntax.
+
+// this function is called every time NEURON needs to update V_extracellular
+proc set_e_ext() { localobj field
+  // proc set_e_ext( phase_number = [0,1,2, ... ], pulse_number = 0...n )
+
+  field = new Vector()
+
+  if (stimulus_comments) { f.printf("\n// set_e_ext(%d) at %f",$1,t) } // insert as comment in datablock
+
+  if ($1 == 0) {
+    forall e_extracellular = 0
+    sprint(next_event, "set_e_ext(1)")
+  } else if ($1 >= stim_time.size()) {
+    forall e_extracellular = 0
+    cvode.event(0, "set_e_ext(0)")
+    return
+  } else {
+    // stim_volt is a List of Matrices, nNode x nChan
+    // stim_pattern is a Matrix of (relative) stimulus strengths, nTime x nChan
+
+    for s_type = 0,axon.count()-1 {
+
+      if (multiple_stim_amp) {
+
+      	field = stim_pattern.getrow($1-1)
+		field = field.mul(distalstim) // this is hacky, using this object as 
+		field = stim_volt.o(s_type).mulv(field)
+
+		for i=0,axon.o(s_type).count()-1  { 
+	   		axon.o(s_type).o(i).sec().e_extracellular = field.x[i]
+	    }
+      } else {
+	   	field = stim_volt.o(s_type).mulv(stim_pattern.getrow($1-1))
+	   	for i=0,axon.o(s_type).count()-1  { 
+	   		axon.o(s_type).o(i).sec().e_extracellular = field.x[i] * stim_amp 
+	    }
+	  }
+    }
+
+    sprint(next_event, "set_e_ext(%d)",$1+1)
+  }
+  if (verbose) { printf("SET cvode.event( %f, %s )\n",stim_time.x[$1], next_event)}
+  cvode.event( stim_time.x[$1], next_event) 
+}  
+
+// advance() is called by NEURON at each time step
+proc advance() {
+  fadvance()
+  if (output_mode <= 0) { // no output requested
+    if (AP_time > 0) return
+    if (t < delay) return 
+    for i=0,axonnodes-1 node[i] { // check for spike   
+  		if ( v(0.5) > AP_threshold) AP_time = t
+  		break
+    }
+    return // no output requested
+  }
+  output_block() // output requested
+} // proc
+

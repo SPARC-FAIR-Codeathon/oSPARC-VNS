@@ -1,0 +1,242 @@
+/*--------------------------------------------------------------------
+
+08/2019		Calvin Eiber
+06/2016		Jessica Gaines and Katharine Polasek
+04/2015		Lane Heyboer and Julia Slopsema
+02/2002		Cameron C McIntyre
+
+SIMULATION OF PNS MYELINATED MOTOR or SENSORY AXON
+
+This model is described in detail in:
+
+Gaines JS, Finn KE, Slopsema JP, Heyboer LA, Polasek KH. A Model of 
+Motor and Sensory Axon Activation in the Median Nerve Using Surface Electrical Stimulation. Journal of Computational Neuroscience, 2018.
+
+McIntyre CC, Richardson AG, and Grill WM. Modeling the excitability of
+mammalian nerve fibers: influence of afterpotentials on the recovery
+cycle. Journal of Neurophysiology 87:995-1006, 2002.
+
+----------------------------------------------------------------------*/
+
+
+
+// Read in voltages in each axon segment
+strdef cache_path
+cache_path = "$CACHEPATH"
+load_file("./+models/import_Ve_data.hoc")
+import_fields(4,$thread)
+
+// Fiber diameter (generate at template formation)
+fiberDiam=$fibreDiam
+
+// The number of nodes (generate at template formation)
+axonnodes=$numbernodes
+
+print "begin model setup"
+
+load_file("noload.hoc")
+
+proc model_globels() {			
+	celsius=37		//degrees C//	// Human body temperature			
+
+#IFDEF neuron_MOTOR
+	v_init=-85.9411 //mV//          // starting voltage
+#ENDIF
+#IFDEF neuron_SENSORY
+ 	v_init=-79.3565 //mV//          // starting voltage
+#ENDIF
+
+	dt=0.01   //ms//                // time step
+	tstop=$simDuration  //ms//      // time at which simulation terminates
+
+//topological parameters//
+	paranodes1=(axonnodes-1)*2//156_40_156 (nodes-1)*2      // number of mysa segments in the axon model
+	paranodes2=(axonnodes-1)*2//156_40_156 (nodes-1)*2      // number of flut segments in the axon model
+	axoninter=(axonnodes-1)*6//468_120_468                  // number of stin segments in the axon model
+	axontotal=axonnodes+paranodes1+paranodes2+axoninter     // total number of segments in the axon model
+
+//morphological parameters//	
+	paralength1 = 3.0*$p_mysalen   // mysa length
+	nodelength  = 1.0*$p_nodelen   // node length
+	space_p1    = 0.002*$p_mysapax // mysa periaxonal space width
+	space_p2    = 0.004*$p_flutpax // flut periaxonal space width
+	space_i     = 0.004*$p_stinpax // stin periaxonal space width
+
+//electrical parameters//	
+    rhoa=0.7e6 // Ohm-um                   //axoplasmic resistivity
+	mycm=0.1   // uF/cm2/lamella membrane  // myelin capacitance
+	mygm=0.001 // S/cm2/lamella membrane   // myelin conductance
+}
+
+model_globels()
+
+proc dependent_var() {
+
+    // linear interpolation of properties from McIntyre, Richardson, and Grill (2002) for any fiber diameter between 5.7 and 16 um
+	g = 0.0172*(fiberDiam)+0.5076    		// G-ratio, I don't think this value is used
+
+	nodeD  = (0.00630378*(fiberDiam*fiberDiam) + 0.207054*(fiberDiam) + 0.5339) * $p_nodedia // quadratic re-scaling per Lubba 2019
+	axonD  = (0.01876226*(fiberDiam*fiberDiam) + 0.478749*(fiberDiam) + 0.1204) * $p_stindia
+	paraD1 = (0.00630378*(fiberDiam*fiberDiam) + 0.207054*(fiberDiam) + 0.5339) * $p_mysadia
+	paraD2 = (0.01876226*(fiberDiam*fiberDiam) + 0.478749*(fiberDiam) + 0.1204) * $p_flutdia
+
+	interlength = ((221.1322 * fiberDiam ^ 3.133103) / (fiberDiam ^ 3.133103 + 593.404881)) * $p_stinlen
+	// interlength = ((248.5096 * fiberDiam ^ 3.128717) ./ (fiberDiam ^ 3.128717 + 587.883349)) * $p_stinlen
+
+// TODO I noticed something funny, I had re-fit this value but I think the above equation (the one in use, not the commented one)
+// is somehow incorrect. 
+
+	paralength2 = (2.5811*(fiberDiam)+19.59) * $p_flutlen 	//length of paranode2
+	deltax = ( 6*interlength + 2*paralength1 + 2*paralength2 + nodelength ) // total length between nodes
+	nl = ((158.4396 * fiberDiam ^ 1.425488) / (fiberDiam ^ 1.425488 + 17.281599) + 39.5452) * $p_nlamella //number of lamella
+	// NL is different to the interpolator used for experiment_1 - the old values crossed zero near 0.3 µm
+
+	// OLD relations (had zero-crossings between 1, 4 um)
+	// axonD = 0.889*(fiberDiam)-1.9104  		// diameter of the axon
+	// nodeD = 0.3449*(fiberDiam)-0.1484 		// diameter of the node
+	// paraD1 = 0.3527*(fiberDiam)-0.1804		// diameter of paranode 1
+	// paraD2 = 0.889*(fiberDiam)-1.9104 		// diameter of paranode 2
+	// deltax = (969.3*log(fiberDiam)-1144.6)   // node-node length
+	// nl = (65.897*log(fiberDiam)-32.666)		//number of lamella
+	// interlength=(deltax-nodelength-(2*paralength1)-(2*paralength2))/6 
+
+	Rpn0=(rhoa*0.01)/(PI*((((nodeD/2)+space_p1)^2)-((nodeD/2)^2)))
+	Rpn1=(rhoa*0.01)/(PI*((((paraD1/2)+space_p1)^2)-((paraD1/2)^2)))
+	Rpn2=(rhoa*0.01)/(PI*((((paraD2/2)+space_p2)^2)-((paraD2/2)^2)))
+	Rpx=(rhoa*0.01)/(PI*((((axonD/2)+space_i)^2)-((axonD/2)^2)))	
+}
+
+dependent_var()
+
+objectvar stim, axon
+create node[axonnodes], MYSA[paranodes1], FLUT[paranodes2], STIN[axoninter]
+access node[0]	//APD
+
+axon = new List()
+
+
+proc initialize(){
+
+	// print nl
+	// print fiberDiam
+	// print axonD
+	// print paraD2
+	// print paraD1
+	
+	forall insert extracellular // initialize extracellular voltage source
+	forall e_extracellular = 0  // set extracellular voltage source to ground
+	
+	// this order is the type sequence generated by matlab
+	// see +models.axon_model/make_Vfield_datfiles
+	// NODE, MYSA, FLUT, STIN
+
+    axon.append(new List()) // NODE list
+	for i=0,axonnodes-1 { node[i]{
+
+		nseg=1
+		diam=nodeD
+		L=nodelength
+		Ra=rhoa/10000
+		cm=2
+
+	#IFDEF neuron_MOTOR
+		insert node_motor   // mod file declaring nodal channel properties
+	#ENDIF
+	#IFDEF neuron_SENSORY
+		insert node_sensory // mod file declaring nodal channel properties
+	#ENDIF
+
+		xraxial=Rpn0 xg=1e10 xc=0
+		axon.o(0).append(new SectionRef()) // object ref to this section
+	  }
+	}
+
+    axon.append(new List()) // MYSA list	
+	for i=0, paranodes1-1 {	MYSA[i]{
+
+		nseg=1
+		diam=fiberDiam
+		L=paralength1
+		Ra=rhoa*(1/(paraD1/fiberDiam)^2)/10000
+		cm=2*paraD1/fiberDiam
+			
+	#IFDEF neuron_MOTOR
+		insert mysa_motor	// mod file declaring mysa channel properties
+	#ENDIF
+	#IFDEF neuron_SENSORY
+		insert mysa_sensory // mod file declaring mysa channel properties
+	#ENDIF
+		xraxial=Rpn1 xg=mygm/(nl*2) xc=mycm/(nl*2)
+		axon.o(1).append(new SectionRef()) // object ref to this section
+	  }
+	}
+
+    axon.append(new List()) // FLUT list
+	for i=0, paranodes2-1 {	FLUT[i]{
+
+		nseg=1
+ 		diam=fiberDiam 
+		L=paralength2
+ 		Ra=rhoa*(1/(paraD2/fiberDiam)^2)/10000
+ 		cm=2*paraD2/fiberDiam
+ 			
+	#IFDEF neuron_MOTOR
+		insert flut_motor   // mod file declaring flut channel properties
+	#ENDIF
+	#IFDEF neuron_SENSORY
+		insert flut_sensory // mod file declaring flut channel properties
+	#ENDIF
+		xraxial=Rpn2 xg=mygm/(nl*2) xc=mycm/(nl*2)
+		axon.o(2).append(new SectionRef()) // object ref to this section
+      }
+	}
+
+    axon.append(new List()) // STIN list
+	for i=0, axoninter-1 { STIN[i]{
+
+		nseg=1
+		diam=fiberDiam
+		L=interlength
+		Ra=rhoa*(1/(axonD/fiberDiam)^2)/10000
+		cm=2*axonD/fiberDiam
+			
+	#IFDEF neuron_MOTOR
+		insert stin_motor	// mod file declaring stin channel properties
+	#ENDIF
+	#IFDEF neuron_SENSORY
+		insert stin_sensory // mod file declaring stin channel properties
+	#ENDIF
+		xraxial=Rpx xg=mygm/(nl*2) xc=mycm/(nl*2)
+		axon.o(3).append(new SectionRef()) // object ref to this section
+	  }
+	}
+
+	// connect segments together
+	for i=0, axonnodes-2 {
+		connect MYSA[2*i](0), node[i](1)
+		connect FLUT[2*i](0), MYSA[2*i](1)
+
+		connect STIN[6*i](0), FLUT[2*i](1)
+		connect STIN[6*i+1](0), STIN[6*i](1)
+		connect STIN[6*i+2](0), STIN[6*i+1](1)
+		connect STIN[6*i+3](0), STIN[6*i+2](1)
+		connect STIN[6*i+4](0), STIN[6*i+3](1)	
+		connect STIN[6*i+5](0), STIN[6*i+4](1)	
+
+		connect FLUT[2*i+1](0), STIN[6*i+5](1)
+		connect MYSA[2*i+1](0), FLUT[2*i+1](1)
+		connect node[i+1](0), MYSA[2*i+1](1)
+	}
+
+	finitialize(v_init)
+	fcurrent()
+}
+
+initialize()
+
+strdef output_file
+output_file = "$CACHEPATH/NEURON_vm$thread.dat"
+
+// it's assumed that the working directory is %BIDSROOT% /code
+// the actual model code lives in %BIDSROOT% / code / +models
+load_file("./+models/analysis_interface.hoc")
