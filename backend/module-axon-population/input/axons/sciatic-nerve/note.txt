@@ -1,0 +1,14 @@
+
+unmyelinated axon diameter histograms were derived from the data shown in: 
+
+SCHMALBRUCH 1986
+Table 4: Number and diameter of the unmyelinated axons in branches of
+the sciatic nerve of a normal rat as compared to a rat in which the
+autonomic fibers have been eliminated. 
+
+Neither SCHMALBRUCH nor IKADA has actual unmyelinated distributions. Since 
+sciatic is not visceral nerve, finding more accurate data is left as an
+exercise to the student.
+
+Myelinated axons extracted from the scatterplot in IDAKDA 
+
