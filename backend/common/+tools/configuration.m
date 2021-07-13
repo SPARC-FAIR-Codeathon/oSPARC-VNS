@@ -12,8 +12,8 @@ function [output] = configuration(varargin)
   
   % if file does not exist, generate
   if any(named('noload')), CONFIG_file = ''; 
-  else
-    CONFIG_file = tools.file('~/code/+tools/configuration.json');
+  else      
+    CONFIG_file = [mfilename('fullpath') '.json'];
     if ~exist(CONFIG_file,'file')    
       if isdeployed
           fprintf('+tools.configuration.m: "%s" did not exist, %s ... \n', ...
@@ -31,7 +31,7 @@ function [output] = configuration(varargin)
     [me,this] = gather_configuration(CONFIG_file); 
   end
   if any(named('make-new-file'))
-    CONFIG_file = tools.file('~/code/+tools/configuration.json');
+    CONFIG_file = [mfilename('fullpath') '.json'];
     make_new_config_file(CONFIG_file,me,varargin{:})
     me = []; this = []; return
     

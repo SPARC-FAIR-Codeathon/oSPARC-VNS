@@ -50,6 +50,8 @@ if true
     disp('====================================================')
 end
 
+tools.file('root',pwd); % set 'root' to this folder
+
 if isdeployed
   if exist(default_file,'file')
        printf('Found array description file: %s\n', array_file)
@@ -70,8 +72,8 @@ if isfield(opts.array,'mesh'), opts.mesh = opts.array.mesh; end
 if ~isempty(nerve_script)
  
   printf('Loading %s', nerve_script);
-  if has_ext_(varargin{2},'.mat'), n = load(nerve_script); 
-  elseif has_ext_(varargin{2},'.json'), n = tools.parse_json(nerve_script);
+  if has_ext_(nerve_script,'.mat'), n = load(nerve_script); 
+  elseif has_ext_(nerve_script,'.json'), n = tools.parse_json(nerve_script);
   else error('%s: unknown extension, expected .mat or .json', nerve_script)
   end      
 

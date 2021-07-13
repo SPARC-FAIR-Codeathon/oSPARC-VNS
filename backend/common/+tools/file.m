@@ -82,6 +82,7 @@ else
     case {'T2','TT','SHORTER'}, filepath = strrep(varargin{1},tools.file('sub~'),'sub~');
     case {'MAKE'}, tools.make_SPARC_subject(varargin{:}); 
                    tools.file('set',varargin{:}); 
+    case {'ROOT','SET-ROOT'}, update_json(info,'root',varargin{1});
     otherwise
       error('Unknown command "%s"', cmd)
   end
@@ -408,7 +409,8 @@ if isempty(this)
   this = tools.configuration('noload'); 
   this.root = fileparts(mfilename('fullpath'));  
   this.file = [this.root filesep 'running.json'];
-  this.root = regexprep(this.root,'([\\/])code[\\/].*$','');  
+  % this.root = regexprep(this.root,'([\\/])code[\\/].*$','');    
+  this.root = regexprep(this.root,'([\\/])common[\\/].*$','');
 end
 if isempty(strfind(ctfroot, 'MATLAB')), this.pid = getpid; %#ok<STREMP>
 else  this.pid = feature('getpid');
