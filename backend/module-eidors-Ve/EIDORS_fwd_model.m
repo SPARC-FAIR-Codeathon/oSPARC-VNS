@@ -39,33 +39,51 @@ get_ = @(v) varargin{find(named(v))+1};
 % @[mesh.insert_gmsh_electrodes('-import','elec_geom.mat')] 
 % if exist('e','var'), save elec-geom.mat -struct e , end %#ok<USENS>
 
-e = get_input_structure(varargin{:}); 
+if any(named('-fwd-model')) % expose "build_forward_model"
+  fmdl = build_forward_model(get_('-fwd-model')); % set up non-homogenous anisotropic conductivity
+  assignin('caller','fmdl',fmdl);
+  return
+end
+
+if any(named('-geom')), e = get_('-geom'); 
+elseif nargin > 1 && isstruct(varargin{1}), e = varargin{1};
+elseif any(named('-fix-m')), e = []; % fill in in a moment
+else e = load(tools.cache('path','elec-geom.mat'));
+end
+
+if ~isfield(e,'MeshLengthMax'),  e.MeshLengthMax = 0.1;   end
+if ~isfield(e,'Perineurium_mm')
+    warning('using default perineurium, 1 um')
+    e.Perineurium_mm = 1e-3; 
+end
 
 if any(named('-out')), output_name = get_('-out');
-elseif isfield(e,'output'), output_name = e.output;
+elseif any(named('-fix-m')), output_name = get_('-fix-m'); % requires name  
+  if ~exist(output_name,'file')
+    if any(named('-stim')), fn = 'stimulus*.mat';
+    else                    fn = 'sensitivity*.mat';
+    end
+    [fn,fp] = uigetfile(fn,[],tools.file('~\input\'));    
+    output_name = [fp fn];
+  end
+  
+  old_eidors_file = load(output_name);
+  e = old_eidors_file.info; % override "elec-geom.mat"
+  
 else output_name = ''; 
 end
 
 % if output_name exists but does not end in .mat: 
 if ~isempty(output_name) && isempty(regexp(output_name,'\.mat$','once'))
-    output_name = sprintf('%s (%s).mat', tools.file('eidors~/sensitivity'), ...
+    output_name = sprintf('%s (%s).mat', tools.file('out~/sensitivity'), ...
                                          output_name);
-elseif isempty(output_name) 
-    output_name = tools.file('get','eidors~/sensitivity (%d)', 'next');
-end
-
-if ~exist(fileparts(output_name),'dir')
-    warning('ViNERS:nerveAnat:missingOutputDir', ...
-            'requested output dir %s did not exist. This often %s (%s).', ...
-            fileparts(output_name), ...
-            'indicates a problem with the current subject in tools.file', ...
-            tools.file('T',tools.file('sub~')))
-    mkdir(fileparts(output_name));
 end
 
 %% Generate requested mesh
-m = generate_nerve_mesh(get_,named, e); 
-m = configure_array_electrodes(m); % Configure electrodes. 
+if any(named('-fix-m')), m = old_eidors_file.model;
+else m = generate_nerve_mesh(get_,named, e); 
+     m = configure_array_electrodes(m); % Configure electrodes. 
+end
 
 %% Show the volume and electrode pattern
 preview_eidors_mesh(m)
@@ -103,7 +121,16 @@ for f_id = fascicle_list % Each fascicle, broken into chunks.
     fascicle_id = sprintf('Fascicle%d', f_id);
 
     [~,idx] = sort( m.nodes(:,1) ); % all points, left-to-right
-    i_sim = obj_idx_(fascicle_id);  % FascicleN and P_FascicleN    
+    i_sim = obj_idx_(fascicle_id);  % FascicleN and P_FascicleN
+    
+    if any(named('-fix-m'))
+      i_sim = get_missing_indices(old_eidors_file, fascicle_id, i_sim);
+      if isempty(i_sim), continue, end      
+    end
+    
+    if any(named('-quick-sample'))
+      i_sim = get_chebySample_indices(m,f_id,1024); 
+    end
     
     idx(~ismember(idx,i_sim)) = []; % idx becomes i_sim but sorted
     
@@ -117,8 +144,8 @@ for f_id = fascicle_list % Each fascicle, broken into chunks.
     else n_chunk = round(numel(idx)/chunk_size);
          chunk_size = ceil(numel(idx)/n_chunk);
     end
-    
-    %% CORE loop (only relevent if -direct set)
+
+    % TODO - can we parfor this? 
     for chunk = 1:max(1,ceil(numel(idx_full) / chunk_size))
         %% Do in lots of 1000 points, keeps the slowness managable.
         m.electrode(cellfun(@isempty,{m.electrode.name})) = [];
@@ -141,13 +168,13 @@ for f_id = fascicle_list % Each fascicle, broken into chunks.
                                                 [ones(1,nE) -ones(1,nE)]);
         m.stimulation = struct([]);
         
-        if any(named('-stim')) || ~any(named('-direct'))
+        if any(named('-stim'))
           ref = nE + 1;
           meas_pattern = sparse(v_((1:nE)' * [1 1]), [1:nE ref*ones(1,nE)], ...
                                                   [ones(1,nE) -ones(1,nE)]); % Updated reference
           for ii = 1:nE 
               m.stimulation(ii).stimulation = 'Amp';
-              if any(named('-mono')) || nE == 1 || ~any(named('-stim'))
+              if any(named('-mono'))
                    stim_pattern = sparse([ii ref],[1 1],[1 -1],nE+1,1);
               else stim_pattern = sparse([ii mod(ii,nE)+1],[1 1],[1 -1],nE+1,1);
               end
@@ -176,12 +203,12 @@ for f_id = fascicle_list % Each fascicle, broken into chunks.
         %% Set conductivities and run model
         
         fprintf('Running field simulation [%s chunk %d] ... \n', fascicle_id, chunk)
-        if any(named('-sigma')) % Import volume conductivities from fitted transimpedance data
+        if any(named('-sigma')), % Import volume conductivities from fitted transimpedance data
              em = build_forward_model(m,get_('-sigma')); % use custom anisotropic conductivities
         else em = build_forward_model(m); % set up non-homogenous anisotropic conductivity
         end 
         
-        if any(named('-eit-model')) % Import volume conductivities from fitted transimpedance data
+        if any(named('-eit-model')), % Import volume conductivities from fitted transimpedance data
             em = import_fitted_conductivities(em, get_('-eit-model')); % set up non-homogenous anisotropic conductivity
         end
         
@@ -196,14 +223,14 @@ for f_id = fascicle_list % Each fascicle, broken into chunks.
            v_meas = v_meas.volt;             
 
            ok = cat(1,m.object_id{strncmp(m.object_name,'P_Fa',3)});
-           if ~any(ok)
+           if ~any(ok), 
              ok = cat(1,m.object_id{strncmp(m.object_name,'Fascicle',3)});
            end
 
            if any(ok)
              ok = unique(m.elems(ok,:));
              scatter3(m.nodes(ok,1), m.nodes(ok,2), m.nodes(ok,3), 10, ...
-                              v_meas(ok,1),'o'), colormap(tools.magma)
+                              v_meas(ok,1),'o'), colormap magma
              caxis(quantile(v_meas(ok,1),[.01 .99]));
            end
            
@@ -220,19 +247,6 @@ for f_id = fascicle_list % Each fascicle, broken into chunks.
            model = m;
            v_extracellular = v_meas;
            save(output_name,'info','model','v_extracellular')
-           
-           if ~any(named('-direct')) && ~any(named('-stimulus'))           
-             % see https://en.wikipedia.org/wiki/Reciprocity_(electromagnetism)#Reciprocity_for_electrical_networks
-               result.info = e;
-               result.model = m;
-               result.v_extracellular = v_meas;
-               result = convert_stim2fascicles(result); 
-               result = rmfield(result,'v_extracellular');
-                 
-               output_name = strrep(output_name,'stimulus','sensitivity');
-               save(output_name,'-struct','result');     
-           end
-           
            return
         else
             
@@ -263,6 +277,7 @@ if any(named('-fix-m')), coalesce_EIDORS(old_eidors_file,output_name);
 else coalesce_EIDORS(output_name,'new');
 end
 
+
 return % everything after this is visualisation
 
 %%
@@ -290,7 +305,7 @@ scatter3(meas_xyz(:,1),meas_xyz(:,2),meas_xyz(:,3), [], v_meas(ee,:),'s','filled
 title(m.electrode(ee).name)
 
 caxis([min(v_meas(ee,:)) max(v_meas(ee,:))])
-colormap(tools.magma), colorbar('SouthOutside')
+colormap(magma), colorbar('SouthOutside')
 
 zoom = 0.02 * [1 -1; -1 1] + [1 0; 0 1];
 axis(axis * blkdiag(zoom,zoom,zoom)), grid on
@@ -312,76 +327,13 @@ end
 
 tools.tidyPlot
 xlabel('Distance from electrode, mm')
-ylabel('Sensitivy, uV / uA')
+ylabel('Sensitivy, µV / µA')
 clear ee d0 
 
 % set(gca,'YScale','log')
-% The response (uV/uA) seems to be linear w.r.t. conductivity as expected
+% The response (µV/µA) seems to be linear w.r.t. conductivity as expected
 return
 
-%% Load the array configuration from .mat or .json file; check defaults 
-function e = get_input_structure(varargin)
-
-named = @(v) strncmpi(v,varargin,length(v)); 
-get_ = @(v) varargin{find(named(v))+1};
-
-is_ext_ = @(a,b) strncmpi(fliplr(a),fliplr(b),length(b)); 
-
-if nargin > 0 && isstruct(varargin{1}), file = varargin{1}; 
-elseif nargin > 0 && exist(varargin{1},'file'), file = varargin{1}; 
-elseif any(named('-geom')), file = get_('-geom'); 
-elseif exist(tools.cache('path','elec-geom.mat'),'file')
-        file = tools.cache('path','elec-geom.mat'); 
-elseif exist(tools.cache('path','elec-geom.json'),'file')
-        file = tools.cache('path','elec-geom.json');
-else    file = models.electrode_array(varargin{:});
-end
-
-if isstruct(file), e = file; 
-else   
-  if is_ext_(file,'.mat'),      e = load(file); 
-  elseif is_ext_(file,'.json'), e = tools.parse_json(file);
-  elseif is_ext_(file,'.xml'),  e = tools.parse_xml(file); 
-  else error('unknown filetype on file "%s", expected {.mat, .json, .xml}', file)
-  end
-
-  if ~any(named('-q')), fprintf('Loading %s\n', file); end
-  % CE 9-4-21: I haven't tested the .json or .xml here yet.   
-end
-
-if isfield(e,'mesh') % move these fileds to 'top-level'
-  for fi = fieldnames(e.mesh)'
-    e.(fi{1}) = e.mesh.(fi{1}); 
-  end
-end
-
-%% Add some default fields 
-
-if ~isfield(e,'MeshLengthMax')
-    e.MeshLengthMax = 0.1;   
-    warning('ViNERS:nerveAnat:default', ...
-            'using default MeshLengthMax, %g mm', e.MeshLengthMax)
-end
-% if ~isfield(e,'SplineIndex'),    e.SplineIndex = 100;     end
-if ~isfield(e,'Perineurium_mm') 
-  if isfield(e,'nerve') && isfield(e.nerve,'Perineurium_mm')
-       e.Perineurium_mm = e.nerve.Perineurium_mm;
-  elseif isfield(e,'nerve') && isfield(e.nerve,'Perineurium_um')
-       e.Perineurium_mm = e.nerve.Perineurium_um / 1e3;
-  else e.Perineurium_mm = 1e-3; 
-       warning('ViNERS:nerveAnat:default', ...
-               'using default perineurium, %g um', e.Perineurium_mm*1e3)
-  end
-end
-
-if ~any(named('-no-cache'))
-    save(tools.cache('path','elec-geom.mat'),'-struct','e')
-end
-
-
-return
-
-%% Collect intermediate results into final output structure
 function out = coalesce_EIDORS(outname,inputs)
 
 default_in = '*(1).mat'; % <<< Which EIDORS sim do we want? 
@@ -418,7 +370,7 @@ for ff = 1:length(list)
     f_id = regexp(list(ff).name,'Fascicle\d+','match','once');
     
     if isempty(f_id), 
-        warning('ViNERS:EidorsParse', ...
+        warning('pnModel:EidorsParse', ...
                 'Unclear how to parse "%s"',list(ff).name)
     end
     
@@ -489,38 +441,27 @@ end
 
 tools.tidyPlot
 
-%% Generate mesh from specified inputs 
 function m = generate_nerve_mesh(get_,named, e)
 
-PN_mesh = tools.cache('PATH','nerve+array'); 
+PN_mesh = tools.cache('PATH','pelvic_nerve'); 
 PN_mesh = @(ext)[PN_mesh ext]; % output file
 
 if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
 
-  if any(named('-template')), geo_template = get_('-template');
-  elseif isfield(e,'array') && isfield(e.array,'Template')
-       geo_template = e.array.Template;
-  elseif isfield(e,'array') && isfield(e.array,'template')
-       geo_template = e.array.template;
-  else % Not supplied as input argument, go find it      
-    geo_template = tools.file('get','mesh~\*.geo.template','-q');
-    if isempty(geo_template)
-        geo_template = 'source~\array\planar-array.geo.template'; 
-    end
-  end
+  geo_template = dir(tools.file('~/input/array/*.geo.template','-nomake')); % Check for a subject-specific file first
   
-  if any(geo_template == '~'), geo_template = tools.file(geo_template); end
-  if ~exist(geo_template,'file')
-      geo_template = [geo_template '.geo.template'];
+  if any(named('-template')), geo_template = get_('-template');
+  elseif ~isempty(geo_template)
+    geo_template = [geo_template(1).folder filesep geo_template(1).name];
+  elseif exist(PN_mesh('.geo.template'),'file')
+    geo_template = PN_mesh('.geo.template');
+  else
+    geo_template = tools.file('~/input/array/pelvic_nerve.geo.template');
   end
   t = tic;
   
   make_opts = {'-usev','-output',PN_mesh('.geo'), ...
                   'virtual_thinlayer','exterior_len',e.MeshLengthMax};
-  if isfield(e,'array') && isfield(e.array,'carrier') % case-sensitive
-      more_opts = tools.opts_to_args(e.array,'carrier','--s2a-keep');
-      make_opts = [make_opts more_opts];
-  end
   
   if any(named('-make-o')), more_opts = get_('-make-o');
     if ~iscell(more_opts), more_opts = {more_opts}; end
@@ -529,7 +470,7 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
   
   if ~exist(PN_mesh('.geo'),'file')
     tools.makeFromTemplate(geo_template, make_opts{:})
-  else   warning('ViNERS:existing_geo_file', ...
+  else   warning('pnModel:existing_geo_file', ...
                  'Using existing .geo file (%s). %s', PN_mesh('.geo'), ...
                  'If this is not intended, call tools.cache(''reset'')')
   end
@@ -537,14 +478,11 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
   % use gmsh.exe to convert the .geo file to a .msh file:
   if ~exist(PN_mesh('.msh'),'file')  
     path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
-    system(sprintf('"%s" "%s" -format msh41 -3',path_to_gmsh,PN_mesh('.geo'))); 
+    system(sprintf('"%s" "%s" -3',path_to_gmsh,PN_mesh('.geo'))); 
   end
 
   if ~exist(PN_mesh('.msh'),'file')
-      
-    if isunix, system(['gmsh ' PN_mesh('.geo')])
-    else               winopen(PN_mesh('.geo'))
-    end
+    winopen(PN_mesh('.geo'))
     error('Pipeline crashed during mesh generation')
   end
   
@@ -552,12 +490,7 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
   
   m = mesh.make_gmsh_thinLayer(PN_mesh('.geo'), e.Perineurium_mm );
   fprintf('Elapsed time is %.0f:%02.3f\n', floor(toc(t)/60), mod(toc(t),60))  
-else
-  warning('ViNERS:existing_mat_file', ...
-                 'Using existing mat file (%s). %s', PN_mesh('-thin.msh.mat'), ...
-                 'If this is not intended, call tools.cache(''reset'')')
-  
-  m = load(PN_mesh('-thin.msh.mat'));
+else m = load(PN_mesh('-thin.msh.mat')); 
 end
   
 m.boundary_numbers = ones(size(m.boundary(:,1)));
@@ -787,7 +720,7 @@ end
 d = ~ismember(1:3,d); 
 e_dist = sqrt(sum(m.nodes(idx,d).^2,2)); 
 if ~any(e_dist > ref_electrode(1,1))
-  warning('ViNERS:pointRefElec','COUNTER (ref 1) is a point electrode')
+  warning('pnModel:pointRefElec','COUNTER (ref 1) is a point electrode')
   [~,idx] = min(e_dist);
 else idx(e_dist > ref_electrode(1,1)) = []; 
 end
@@ -820,7 +753,7 @@ elseif size(ref_electrode,1) > 1
   d = ~ismember(1:3,d);
   e_dist = sqrt(sum(m.nodes(idx,d).^2,2)); 
   if ~any(e_dist > ref_electrode(2,1))
-    warning('ViNERS:pointRefElec','GROUND (ref 2) is a point electrode')
+    warning('pnModel:pointRefElec','GROUND (ref 2) is a point electrode')
     [~,idx] = min(e_dist);
   else idx(e_dist > ref_electrode(2,1)) = []; 
   end
@@ -887,10 +820,10 @@ if ~exist('sigma','var')
 %     
 %        Normal to fibers    Parallel to fibers
 %        Resistive Reactive  Resistive Reactive
-% 20 Hz  850 u 150  67 u 32   89 u 40  7 u 8
-% 200 Hz 770 u 160  39 u 18   89 u 39  4 u 5
-% 2 kHz  770 u 140  35 u 27   78 u 33  6 u 6
-% 20 kHz 750 u 150  140 u 110 78 u 33  15 u 22
+% 20 Hz  850 ± 150  67 ± 32   89 ± 40  7 ± 8
+% 200 Hz 770 ± 160  39 ± 18   89 ± 39  4 ± 5
+% 2 kHz  770 ± 140  35 ± 27   78 ± 33  6 ± 6
+% 20 kHz 750 ± 150  140 ± 110 78 ± 33  15 ± 22
 %
 % Table 1: Conductivities used for modeling [12]: 
 % AQ Choi, JK Cavanaugh, and DM Durand, "Selectivity of multiple-contact
@@ -925,8 +858,7 @@ end
 % Check that every element has an assigned conductivity
 done = any(em.elem_data(:,:,:),3);
 if ~all(done)
-    % warning('build_forward_model:unsetElements',
-    error('%d of %d tets have undefined conductivities', ...
+    warning('build_forward_model:unsetElements','%d of %d tets have undefined conductivities', ...
         sum(~done), length(done))
 end
 
@@ -957,43 +889,3 @@ for ii = 3:numel(m.object_id)
 end
 
 clear oid i h b t
-
-%% Convert v_extracellular to structure as output by "coalesce"
-function EM = convert_stim2fascicles(EM)
-% see https://en.wikipedia.org/wiki/Reciprocity_(electromagnetism)#Reciprocity_for_electrical_networks               
-
-  nF = sum(contains(EM.model.object_name,'Fasc')) - ...
-       sum(contains(EM.model.object_name,'P_Fasc'));
-    
-  fasc_ = @(n) sprintf('Fascicle%d',n);
-  
-  % EM.v_extracellular is a list, (nodes x electrodes) of the sequential
-  % bipolar stimulus-induced extracellular potential, for ALL nodes 
-  % (not just fascicle nodes). 
-
-  % a sensitivity file is broken up by fascicle, which each fascicle
-  % containing a NODE index and a list of per-node values 
-  
-  % EM.model.object_id is a list of ELEMENT ids which make up each object
-  % in the EIDORS model. Gather each NODE in that set of elements, then use
-  % that to emulate the EM.FascicleN.pot/idx 
-    
-  for ff = 1:nF
-        
-    sel = strcmpi(EM.model.object_name,fasc_(ff));
-    if sum(sel) == 0 && FLAG_multimesh 
-      sel = strcmpi(EM.model.object_name,fasc_(1));      
-    end
-    if sum(sel) ~= 1, error('Object %s not found in EM.model.object_name',fasc_(ff)); end
-    idx = unique(EM.model.elems(EM.model.object_id{sel},:));
-    
-    EM.(fasc_(ff)).idx = idx'; 
-    EM.(fasc_(ff)).pot = EM.v_extracellular(idx,:)';
-  end  
-  
-  EM.utils.x_ = '@(i) out.model.nodes(i,1)';
-  EM.utils.y_ = '@(i) out.model.nodes(i,2)';
-  EM.utils.z_ = '@(i) out.model.nodes(i,3)';
-  EM.utils.fac_ = '@(i) out.(sprintf(''Fascicle%d'',i)).idx'; 
-
-return
