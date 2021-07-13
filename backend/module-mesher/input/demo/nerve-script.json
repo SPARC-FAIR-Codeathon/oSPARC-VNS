@@ -1,0 +1,26 @@
+
+// Example JSON input file specifying neural array geometry - 14 July 2021
+
+{ "mesh": {
+    "MeshLengthMax": 0.2,
+    "DomainSize":[6,6,3,0.31], // mm
+  },
+  "nerve": {
+    "file": "~/input/nerve/example.xml",
+    
+    // compose synthetic pattern from fascicles in file
+    "pIndex": [8, 8],
+    "pLocation": [[20 80], [220 80]], // µm
+    "pRotation": 35, // deg
+
+    // transform resulting pattern 
+    "xMove": [-30,70], // mm
+    "xScale": 1.15, 
+    "xRotate": -15, // deg
+
+    // peri-width
+    "Perineurium_mm": 0.003,
+    "MeshLengthFascicle": 0.02
+  },
+}
+

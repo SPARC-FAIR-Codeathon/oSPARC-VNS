@@ -1,7 +1,145 @@
 
-function nerve_mesh(varargin) 
+function nerve_mesh(array_file,nerve_xml,nerve_script, varargin)
+% main( array.json , nerve.xml , [nerve-mesh-opts.json], [...] )
+% 
+% run models.nerve_mesh
+%  
+% main() with 0 inputs uses ~/input/array/default.json
+% main( array_file ) uses the input .mat or .json file
+% main( array_file, nerve_xml ) additionally uses the specified nerve
+%       anatomy file (over-riding any file embedded in the config file).
+% main( array_file, nerve_xml, nerve_script ) and
+% main( array_file, [],        nerve_script ) uses the specified script
+%       ( either .mat  or .json ) to set up the input nerve geometry.
+% 
+% main( ..., -flags ) exposes some additional functionality: 
+% 
+%   -p preview fascicle pattern to be meshed
+%   -u unit test GMSH strings from input files
+%   -r fast mode, do not clear cache (useful for debugging)
+%   -a additional args, everything past this point is passed into
+%       models.nerve_mesh as an additonal input argument
+% 
+% Calvin Eiber 19-April-2021
 
-RUN_nerve_mesh (varargin{:})
+if nargin < 1 || isempty(array_file)
+  fprintf('Arg 1 not set, using default array.json file\n')
+  array_file = './input/demo/array.json'; 
+end
+if nargin < 2
+  fprintf('Arg 2 not set, using default nerve.xml file\n')
+  nerve_xml = './input/demo/nerve.xml'; 
+end
+if nargin < 3, nerve_script = ''; 
+elseif strcmp(nerve_script,'demo')
+  nerve_script = './input/demo/nerve-script.json'; 
+end
+
+named = @(v) strncmpi(v,varargin,length(v)); 
+has_ext_ = @(a,b) strncmpi(fliplr(a),fliplr(b),length(b)); 
+
+if any(named('-q')), printf = @(s,varargin) 0; 
+else printf = @(s,varargin) fprintf([s '\n'],varargin{:}); 
+end
+
+
+if true
+    disp('====================================================')
+    printf('Running models.nerve_mesh %s\n', datestr(now))
+    printf('{1} = %s\n{2} = %s\n{3} = %s\n',array_file, nerve_xml, nerve_script)
+    disp('====================================================')
+end
+
+if isdeployed
+  if exist(default_file,'file')
+       printf('Found array description file: %s\n', array_file)
+  else printf('Failed to find array description file: %s\n', array_file)
+  end
+end
+
+printf('Loading %s', array_file);
+if has_ext_(array_file,'.mat'), opts = load(array_file); 
+elseif has_ext_(array_file,'.json'), opts = tools.parse_json(array_file);
+else error('%s: unknown extension, expected .mat or .json', array_file)
+end      
+% can be [./array, ./mesh, ./nerve], or [array/...] internally
+
+if ~isfield(opts,'array'), opts.array = opts; end
+if isfield(opts.array,'mesh'), opts.mesh = opts.array.mesh; end
+
+if ~isempty(nerve_script)
+ 
+  printf('Loading %s', nerve_script);
+  if has_ext_(varargin{2},'.mat'), n = load(nerve_script); 
+  elseif has_ext_(varargin{2},'.json'), n = tools.parse_json(nerve_script);
+  else error('%s: unknown extension, expected .mat or .json', nerve_script)
+  end      
+
+  if isfield(n,'nerve'), opts.nerve = n.nerve; else opts.nerve = n; end
+  if isfield(n,'mesh'), opts.mesh = n.mesh; end
+end
+
+if ~isempty(nerve_xml), opts.nerve.file = nerve_xml;
+elseif ~isfield(opts,'nerve'), opts.nerve.file = nerve_xml;
+end
+
+if any(named('-m'))
+  % test mesh.insert_ ... components
+  disp('GMSH code unit test')
+  s = mesh.insert_gmsh_fascicles(opts);
+  disp(s)
+  
+  a = mesh.insert_gmsh_electrodes(opts);    
+  disp(a)
+  return
+end
+
+%% Core code
+
+t = tic; 
+
+mesh.insert_gmsh_fascicles('-setup',opts);
+if ~isfield(opts.nerve,'Perineurium_um')
+ try opts.nerve.Perineurium_um = mesh.get_perineurium_thickness; end
+end
+
+if any(named('-p')), plots.preview_fascicles, 
+    title('click to continue or esc to cancel')
+    [~,~,b] = ginput(1);
+    if any(b==27), error('Cancelled'), end
+end
+if isdeployed, debug_path_config_for_oSPARC, end
+
+if ~any(named('-r')), tools.cache('reset'), end
+
+if any(named('-a')), CLI_args = varargin(find(named('-a'))+1:end); 
+else CLI_args = {}; 
+end
+
+RUN_nerve_mesh('-geom',opts,CLI_args{:}, ...
+               '-out',tools.file('get','./output/eidors-mesh (%d).mat','next'))
+
+if ~any(named('-q')) || isdeployed, toc(t), end
+
+return
+
+%% Example unit test
+
+function debug_path_config_for_oSPARC
+
+fprintf('/*************************************** \n');
+fprintf('  oSPARC model configuration \n');
+fprintf('  pwd = "%s"\n', pwd);
+fprintf('  tools.file(''~'') = "%s"\n', tools.file('~'));
+fprintf('  tools.file(''out~'') = "%s"\n', tools.file('out~'));
+fprintf('  tools.configuration(''noload'') = \n')
+d = tools.configuration('noload'); 
+disp(d)
+fprintf('  tools.cache = "%s"\n', tools.cache);
+
+
+fprintf(' ***************************************/ \n');
+
 
 
 
