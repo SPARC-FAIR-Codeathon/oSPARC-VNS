@@ -171,7 +171,7 @@ function RUN_nerve_mesh (varargin)
 % leaving just the meshing part. 
 
 %% Parse model inputs
-
+varargin = tools.opts_to_args(varargin,'array','mesh');
 named = @(v) strncmpi(v,varargin,length(v)); 
 get_ = @(v) varargin{find(named(v))+1};
 
@@ -222,15 +222,24 @@ PN_mesh = @(ext)[PN_mesh ext]; % output file
 
 if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
 
-  geo_template = dir(tools.file('~/input/array/*.geo.template','-nomake')); % Check for a subject-specific file first
+  % Check for a subject-specific file first
+  G = dir(tools.file('~/input/*.geo.template','-nomake')); 
   
-  if any(named('-array')), geo_template = get_('-array'); 
-  elseif ~isempty(geo_template)
-    geo_template = [geo_template(1).folder filesep geo_template(1).name];
+  if any(named('-array')), G = get_('-array'); 
+  elseif any(named('-template')), G = get_('-template');
+  elseif isfield(e,'array') && isfield(e.array,'Template'), 
+    G = e.array.Template;      
+  elseif isfield(e,'array') && isfield(e.array,'template')
+    G = e.array.template;
+  elseif ~isempty(G), [~,idx] = max([G.datenum]); 
+    G = [G(idx).folder filesep G(idx).name];
   elseif exist(PN_mesh('.geo.template'),'file') % try the cache 
-    geo_template = PN_mesh('.geo.template');
-  else error('Could not find ~/input/array/*.geo.template')
+    G = PN_mesh('.geo.template');
+  else error('Could not find ~/input/*.geo.template')
   end
+  
+  if ~any(G == '.'), G = [G '.geo.template']; end
+  if any(G == '~'), G = tools.file(G); end
   
   t = tic;
   
@@ -244,7 +253,7 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
   end
   
   if ~exist(PN_mesh('.geo'),'file')
-    tools.makeFromTemplate(geo_template, make_opts{:})
+    tools.makeFromTemplate(G, make_opts{:})
   else   warning('pnModel:existing_geo_file', ...
                  'Using existing .geo file (%s). %s', PN_mesh('.geo'), ...
                  'If this is not intended, call tools.cache(''reset'')')

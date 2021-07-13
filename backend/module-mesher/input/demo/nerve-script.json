@@ -3,23 +3,23 @@
 
 { "mesh": {
     "MeshLengthMax": 0.2,
-    "DomainSize":[6,6,3,0.31], // mm
+    "DomainSize":[6,6,3], // mm
   },
   "nerve": {
-    "file": "~/input/nerve/example.xml",
+    "file": "~/input/demo/nerve.xml",
     
     // compose synthetic pattern from fascicles in file
-    "pIndex": [8, 8],
-    "pLocation": [[20 80], [220 80]], // µm
-    "pRotation": 35, // deg
+    "pIndex": 8,
+    "pLocation": [0 80], // µm
+    "pRotation": 0, // deg
 
     // transform resulting pattern 
-    "xMove": [-30,70], // mm
-    "xScale": 1.15, 
-    "xRotate": -15, // deg
+    "xMove": [-5,5], // mm
+    "xScale": 1.05, 
+    "xRotate": -5, // deg
 
     // peri-width
-    "Perineurium_mm": 0.003,
+    // "Perineurium_mm": 0.003,
     "MeshLengthFascicle": 0.02
   },
 }
