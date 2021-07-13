@@ -1,0 +1,22 @@
+
+// Variable definition file generated using makeFromTemplate
+//  at 07-Jul-2021 15:21:05
+
+$variable names
+
+// #7: cuff_len = $cuff_length; (mm)
+
+cuff_length = 9 
+cuff_thickness = 0.22
+
+// defaults from Payne 2019 Vagus array, all units mm
+
+cuff_IDy = 0.2
+cuff_IDx = 0.55
+cuff_IDr = 0
+
+
+// Mesh length parameters 
+
+exterior_len = 0.5
+interior_len = 0.02

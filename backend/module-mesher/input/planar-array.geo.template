@@ -1,0 +1,29 @@
+
+SetFactory("OpenCASCADE");
+
+// Geometry of the outer box
+Box(1) = {-@[$c_len/2], -$c_thickness, -@[$c_wid/2], ...
+			 $c_len,     $c_thickness,    $c_wid};
+Fillet{1}{2, 4, 6, 8}{$c_radius}
+
+Box(2) = {-@[$c_len/2+$c2_len], -$c_thickness, -@[$c_wid/2+$c2_wid], ...
+		   @[$c_len+2*$c2_len], $c2_thickness,  @[$c_wid+2*$c2_wid]};
+Fillet{2}{26, 28, 30, 32}{$c2_radius}
+
+BooleanUnion{ Volume{1}; Delete; }{ Volume{2}; Delete; }
+
+// Execute electrode import script
+@[mesh.insert_gmsh_electrodes('elec-geom.mat')]
+
+// vol_id = newv;
+// Box(vol_id) = {-5.0,-2.0,-5.0, 10.0, 2.31, 10.0}; // Interstitial
+// Box(vol_id+1) = {-5.0,0.31,-5.0, 10.0, 1.69, 10.0}; // Prostate
+
+// Execute spline script 
+@[mesh.insert_gmsh_fascicles]
+
+// Mesh.RemeshParametrization = 7;
+Mesh.CharacteristicLengthMax = $exterior_len;
+Mesh.CharacteristicLengthMin = 0.0005;
+Mesh.MaxRetries = 3;
+Coherence; // Clean up rounding errors.

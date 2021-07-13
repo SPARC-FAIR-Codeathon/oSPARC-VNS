@@ -1,0 +1,25 @@
+
+// Variable definition file generated using makeFromTemplate
+//  at 26-Sep-2019 14:35:49
+
+#DEFINE statements
+
+$variable names
+
+// #7: Box(1) parameters
+c_len = 4.8
+c_wid = 2.9
+c_thickness = 0.8
+c_radius = 0.3
+
+// #11: Box(2) parameters 
+c2_len = 0.1
+c2_wid = 2.5
+c2_thickness = 0.3
+c2_radius = 1
+
+// #18: // Mesh.CharacteristicLengthMax = $exterior_len;
+exterior_len = 0.5
+
+// #19: // Characteristic Length {4, 3, 2, 1} = $interior_len;
+interior_len = 0.02

@@ -1,0 +1,14 @@
+
+// CONFIGURATION file generated 13-Jul-2021 01:43:20
+
+{ "env-list": [{
+    "name": "rdl-rk02y3.desktop.cloud.unimelb.edu.au",
+    "user": "ceiber",
+    "machine": "glnxa64",
+    "version": "0.0 build 75dd1fc",
+    "cache": "pn-mdl-%d/",
+    "gmsh": "gmsh",
+    "neuron": "/home/unimelb.edu.au/ceiber/ViNERS/source/nrnmech/x86_64/special",
+    "eidors": "/home/unimelb.edu.au/ceiber/Downloads/eidors-v3.10-ng/eidors/"
+  }]
+}
