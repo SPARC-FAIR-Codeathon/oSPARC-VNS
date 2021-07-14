@@ -17,10 +17,10 @@ if isempty(eidors_path)
   end
 end
     
-if ~exist([eidors_path '/startup.m'],'file')
-    warning('eidors/startup.m not found')
+if ~exist([eidors_path '/eidors_startup.m'],'file')
+    warning('eidors/eidors_startup.m not found')
     tools.configuration('open');
 end
 
-if isempty(which('show_fem')), run([eidors_path '/startup.m']), end
+if isempty(which('show_fem')), run([eidors_path '/eidors_startup.m']), end
 warning('off','EIDORS:normalize_flag_not_set'); % Disable annoying warning

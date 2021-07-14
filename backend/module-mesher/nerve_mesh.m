@@ -192,7 +192,7 @@ if ~isempty(output_name) && isempty(regexp(output_name,'\.mat$','once'))
     printf('\nGenerating %s', tools.file('T', output_name))
 end
 
-tools.setupEIDORS;
+tools.setupEIDORS; % if ~isdeployed, tools.setupEIDORS; end
 
 %% Generate requested mesh
 if any(named('-fix-m')), m = old_eidors_file.model;

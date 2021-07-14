@@ -9,7 +9,7 @@
     "cache": "pn-mdl-%d/",
     "gmsh": "C:/Program Files/GMSH 4.8.3/gmsh.exe",
     "neuron": "c:/nrn/bin/nrniv.exe",
-    "eidors": "C:/Users/Calvin/Documents/MATLAB/Keast-lab/EIDORS/"
+    "eidors": "C:/Users/Calvin/Documents/MATLAB/Keast-lab/EIDORS/",
   },{
     "name": "rdl-rk02y3.desktop.cloud.unimelb.edu.au",
     "user": "ceiber",
@@ -18,5 +18,6 @@
     "cache": "pn-mdl-%d/",
     "gmsh": "gmsh",
     "neuron": "/home/unimelb.edu.au/ceiber/ViNERS/source/nrnmech/x86_64/special",
-    "eidors": "/home/unimelb.edu.au/ceiber/Downloads/eidors-v3.10-ng/eidors/" }]
+    "eidors": "/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/eidors/", 
+  }]
 }
