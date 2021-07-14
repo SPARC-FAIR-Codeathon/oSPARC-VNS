@@ -99,6 +99,7 @@ end
 %% Core code
 
 t = tic; 
+if isdeployed, disp('Progress: 3%'), end
 
 mesh.insert_gmsh_fascicles('-setup',opts);
 if ~isfield(opts.nerve,'Perineurium_um')
@@ -192,7 +193,10 @@ if ~isempty(output_name) && isempty(regexp(output_name,'\.mat$','once'))
     printf('\nGenerating %s', tools.file('T', output_name))
 end
 
+printf('try tools.setupEIDORS');
 tools.setupEIDORS; % if ~isdeployed, tools.setupEIDORS; end
+
+if isdeployed, disp('Progress: 6%'), end
 
 %% Generate requested mesh
 if any(named('-fix-m')), m = old_eidors_file.model;
@@ -210,6 +214,9 @@ end
 printf('\nSaving %s ...', tools.file('T', output_name))
 save(output_name,'-struct','m')
 printf('Done!\n')
+
+if isdeployed, disp('Progress: 100%'), end
+
 
 return
 
@@ -257,12 +264,17 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
                  'If this is not intended, call tools.cache(''reset'')')
   end
   
+  if isdeployed, disp('Progress: 10%'), end
+
+  
   % use gmsh.exe to convert the .geo file to a .msh file:
   if ~exist(PN_mesh('.msh'),'file')  
     path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
     system(sprintf('"%s" "%s" -3',path_to_gmsh,PN_mesh('.geo'))); 
   end
 
+  if isdeployed, disp('Progress: 30%'), end
+  
   if ~exist(PN_mesh('.msh'),'file')
     % winopen(PN_mesh('.geo'))
     error('Pipeline crashed during mesh generation')

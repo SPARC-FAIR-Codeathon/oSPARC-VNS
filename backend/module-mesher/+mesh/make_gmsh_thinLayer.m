@@ -22,7 +22,6 @@ end
 
 fprintf('Reading "%s" ...\n', filename)
 
-
 [~,nodes,~,object] = mesh.gmsh_read_mesh(filename,true); % <<<< EIDORS call
 
 % WARNING to future users: as of May 2020, there's been a lot of work and 
@@ -204,6 +203,7 @@ function object = find_object_boundary(nodes, object, index)
 function [nodes, object] = insert_simple_boundary(nodes, object, index, width)
 
   ff = index; 
+  nF = evalin('caller','sum(do_thin_layer)'); 
 
   xyz = nodes.xyz;
   node = object(ff).nodes';
@@ -231,9 +231,14 @@ function [nodes, object] = insert_simple_boundary(nodes, object, index, width)
   tic, tools.printInfo;   
   for ei = 1:nP % for each point in list 
       
-    ee = list(ei);
+    ee = list(ei);    
     if toc > 0.05, tic
+      if isdeployed
+          frac = 0.6*((ff-1)/nF + (ei/nP/nF));
+          fprintf('progress: %0.3f%%\n', 100*frac + 30)
+      else
         tools.printInfo('%s [%d/%d] (%0.2f%%)', object(ff).name, ei, nP, 100*ei/nP)
+      end
     end
     
     eid = node(:,any(enew == ei,1));
