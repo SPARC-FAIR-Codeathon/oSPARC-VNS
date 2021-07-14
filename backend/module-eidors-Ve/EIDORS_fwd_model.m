@@ -4,10 +4,10 @@ function EIDORS_fwd_model (mesh_file, sigma_file, varargin)
 
 if nargin < 1 || isempty(mesh_file)
   fprintf('Arg 1 not set, using example mesh file\n')
-  mesh_file = './input/demo/example mesh.mat'; 
+  mesh_file = './input/demo/example cuff (2).mat'; 
 end
 
-if nargin < 1 || isempty(mesh_file)
+if nargin < 2 || isempty(sigma_file)
   % fprintf('Arg 2 not set, using default conductivities\n')
   sigma_file = './input/default-conductivity.json'; 
 end
@@ -16,6 +16,8 @@ tools.file('root',pwd); % set 'root' to this folder
 
 sigma = tools.parse_json(sigma_file); 
 sigma = [sigma.sigma{:}];
+
+if isdeployed, disp('Progress: 10%'), end
 
 run_FWD_model(mesh_file, '-sigma', sigma, varargin{:})
 
@@ -77,6 +79,7 @@ m = load(input_mesh);
 
 printf('Constructing current pattern ... \n')
 % note: this code depends on exact m.object_names 
+if isdeployed, disp('Progress: 15%'), end
 
 m.electrode(cellfun(@isempty,{m.electrode.name})) = [];
 nE = numel(m.electrode);
@@ -109,11 +112,12 @@ for ee = 1:nE
     m.stimulation(ee).meas_pattern = meas_pattern(stim_pattern(1:end-1) == 0,:);
 end        
         
-
 m = setup_ref_electrodes(m,ref); % Set up reference electrode
 
 %% Set conductivities and run model
 printf('Running field simulation ... \n')
+if isdeployed, disp('Progress: 25%'), end
+
 if any(named('-sigma')), % Import volume conductivities from fitted transimpedance data
      em = build_forward_model(m,get_('-sigma')); % use custom anisotropic conductivities
 else em = build_forward_model(m); % set up non-homogenous anisotropic conductivity
@@ -140,6 +144,9 @@ end
 
 %% Build output file 
 
+if isdeployed, disp('Progress: 90%'), end
+
+
 if any(named('-out')), output_name = get_('-out');
 else output_name = tools.file('get','out~/extracellular-potential (%d).mat','next');
 end
@@ -157,8 +164,9 @@ end
 printf('Saving %s\n', output_name)
 save(output_name,'model','v_extracellular')
          
+if isdeployed, disp('Progress: 100%'), end
 
-return % everything after this is visualisation
+return 
 
 %% Add one or two reference electrodes to outer surfaces 
 function m = setup_ref_electrodes(m,ref) % IN-CONTEXT function
@@ -268,10 +276,10 @@ if ~exist('sigma','var')
 %     
 %        Normal to fibers    Parallel to fibers
 %        Resistive Reactive  Resistive Reactive
-% 20 Hz  850 ± 150  67 ± 32   89 ± 40  7 ± 8
-% 200 Hz 770 ± 160  39 ± 18   89 ± 39  4 ± 5
-% 2 kHz  770 ± 140  35 ± 27   78 ± 33  6 ± 6
-% 20 kHz 750 ± 150  140 ± 110 78 ± 33  15 ± 22
+% 20 Hz  850 ï¿½ 150  67 ï¿½ 32   89 ï¿½ 40  7 ï¿½ 8
+% 200 Hz 770 ï¿½ 160  39 ï¿½ 18   89 ï¿½ 39  4 ï¿½ 5
+% 2 kHz  770 ï¿½ 140  35 ï¿½ 27   78 ï¿½ 33  6 ï¿½ 6
+% 20 kHz 750 ï¿½ 150  140 ï¿½ 110 78 ï¿½ 33  15 ï¿½ 22
 %
 % Table 1: Conductivities used for modeling [12]: 
 % AQ Choi, JK Cavanaugh, and DM Durand, "Selectivity of multiple-contact
