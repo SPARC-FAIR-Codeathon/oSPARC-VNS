@@ -25,7 +25,11 @@ do_warn = [];
 
 for ii = 1:nF
     plot(s.coeffs(1,:,ii), s.coeffs(2,:,ii),'o','Color',C(ii,:),'MarkerSize',4)
-    plot(s.outline(:,1,ii), s.outline(:,2,ii),'-','Color',C(ii,:))    
+    plot(s.outline(:,1,ii), s.outline(:,2,ii),'-','Color',C(ii,:))   
+    if nF > 7, 
+        text(mean(s.outline(2:end,1,ii)), ...
+             mean(s.outline(2:end,2,ii)),sprintf('#%d',ii),'Color',C(ii,:))
+    end
     
     if any(s.outline(:,2,ii) < 0), do_warn = [do_warn ii]; end %#ok<AGROW>
 end

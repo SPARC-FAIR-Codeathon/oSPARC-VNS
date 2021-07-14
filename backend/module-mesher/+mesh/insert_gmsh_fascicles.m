@@ -501,7 +501,7 @@ if isfield(config,'pRotation'), f_angle = config.pRotation; end
 
 nF = max(numel(f_index),size(f_xy,1)); 
 
-if numel(f_index) < numel(f_xy), f_index = repmat(f_index(1),[1 nF]); end
+if numel(f_index) < size(f_xy,1), f_index = repmat(f_index(1),[1 nF]); end
 if numel(f_angle) < nF, f_angle = repmat(f_angle(1),[1 nF]); end
 
 if iscell(f_index), f_index = [f_index{:}]; end
