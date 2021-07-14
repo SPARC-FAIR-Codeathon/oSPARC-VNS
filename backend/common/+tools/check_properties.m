@@ -1,9 +1,7 @@
 
 function check_properties(list,callback)
 
-if isempty(which('tools.make_SPARC_structure')), path(path,expdir('PN')), end
-
-if ~exist('list','var'), list = tools.file('~/primary/'); end
+if ~exist('list','var'), list = tools.file('~/output/'); end
 if ~exist('callback','var'), callback = @numel_chunk_labels; end
 if ischar(list), list = dir(list); end
 
