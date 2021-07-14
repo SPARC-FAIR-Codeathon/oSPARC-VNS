@@ -112,7 +112,7 @@ function [me,this] = gather_configuration(CONFIG_file)
   % This is not actually a JSON parser, we just scroll through looking for a 
   % JSON object which matches our system name, username, and machine type
   
-  if isempty(strfind(ctfroot, 'MATLAB')) %#ok<*STREMP>
+  if isempty(strfind(ctfroot, 'MATLAB')) && ~isdeployed %#ok<*STREMP>
     % contains = @(a,b) cellfun(@(s) ~isempty(strfind(s,b)), a);    
     warning off Octave:regexp-lookbehind-limit
     more off % disable octave paging
