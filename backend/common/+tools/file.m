@@ -371,8 +371,10 @@ if isempty(this)
     % fprintf('tools.config(''root'') = %s', tools.configuration('root'))
   end
 end
-
-if isempty(strfind(ctfroot, 'MATLAB')), this.pid = getpid; %#ok<STREMP>
+    [~,sel] = min(cellfun(@length,{list.name}));
+    if numel(list) ~= 1
+if isempty(strfind(ctfroot, 'MATLAB'))
+      this.pid = getpid; %#ok<STREMP>
 else  this.pid = feature('getpid');
 end,  this.time = now;
 
