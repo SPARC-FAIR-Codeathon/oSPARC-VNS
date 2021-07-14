@@ -1,0 +1,17 @@
+
+// Example JSON input file specifying electrode array - 14 July 2021
+
+{ "nerve": {
+    "file": "~/input/demo/nerve.xml",
+    
+    // compose synthetic pattern from fascicles in file
+    "pIndex": [8,5],
+    "pLocation": [[-35,40],[100,-15]], // µm
+    "pRotation": [0,0], // deg
+        
+    "Perineurium_um": [1.8, 2.2]
+  },
+}
+
+
+
