@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3479411958" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-eidors-Ve/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-eidors-Ve" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code\CDE_compile\for_redistribution" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="4116325877" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-eidors-Ve/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-eidors-Ve" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-eidors-Ve/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>module_EIDORS_compute_fields</param.appname>
     <param.icon />
     <param.icons />
@@ -92,19 +92,12 @@ ${LD_LIBRARY_PATH}:MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa
     <fileset.main>
       <file>${PROJECT_ROOT}/EIDORS_fwd_model.m</file>
     </fileset.main>
-    <fileset.resources />
+    <fileset.resources>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools</file>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/eidors</file>
+    </fileset.resources>
     <fileset.package />
-    <fileset.depfun>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/cache.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/configuration.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/file.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/magma.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/parse_json.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/setupEIDORS.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/eidors/eidors_msg.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/eidors/eidors_obj.m</file>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/eidors/eidors_startup.m</file>
-    </fileset.depfun>
+    <fileset.depfun />
     <build-deliverables>
       <file location="${PROJECT_ROOT}/compile/for_testing" name="readme.txt" optional="true">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-eidors-Ve/compile/for_testing/readme.txt</file>
       <file location="${PROJECT_ROOT}/compile/for_testing" name="splash.png" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-eidors-Ve/compile/for_testing/splash.png</file>

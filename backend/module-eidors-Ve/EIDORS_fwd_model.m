@@ -7,7 +7,7 @@ if nargin < 1 || isempty(mesh_file)
   mesh_file = './input/demo/example cuff (2).mat'; 
 end
 
-if nargin < 1 || isempty(mesh_file)
+if nargin < 2 || isempty(sigma_file)
   % fprintf('Arg 2 not set, using default conductivities\n')
   sigma_file = './input/default-conductivity.json'; 
 end
