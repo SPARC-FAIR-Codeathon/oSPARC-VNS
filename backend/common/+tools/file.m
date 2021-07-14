@@ -56,19 +56,9 @@ else
   switch cmd
 
     case {'S','SET'}
-
-      if iscell(varargin{1}), varargin{1} = varargin{1}{1}; end
-      if isstruct(varargin{1}) && isfield(varargin{1},'folder')
-          sub = regexp(varargin{1}.folder,'(?<=[\\/])sub-[^\\/]*','match','once');
-          sam = regexp(varargin{1}.folder,'(?<=[\\/])sam-[^\\/]*','match','once');
-          run = regexp(varargin{1}.folder,'(?<=[\\/])run-[^\\/]*','match','once');
-          varargin = [{sub},{sam},{run},varargin(2:end)];
-      end
-        
-      sub = set_subject_ID(info,varargin{:});
-      info = update_json(info,'sub',sub);
-      if nargout > 0, filepath = tools.file('sub~/','-make'); end % make if dne
-
+      warning('BIDSfile:oSPARC_not_supported','SET not supported on oSPARC deployment')
+      return
+      
     case {'L','LIST'}, list_path_contents(varargin{:}); 
     case {'H','HELP'}, doc(mfilename) 
     case {'R','RN','REN','RENAME'}, rename_file(varargin{:}); 
@@ -80,8 +70,6 @@ else
     case {'O','OPEN','GOTO'}, winopen(tools.file(varargin{:})); 
     case {'T','TITLE','SHORT'}, filepath = strrep(varargin{1},info.root,'~');        
     case {'T2','TT','SHORTER'}, filepath = strrep(varargin{1},tools.file('sub~'),'sub~');
-    case {'MAKE'}, tools.make_SPARC_subject(varargin{:}); 
-                   tools.file('set',varargin{:}); 
     case {'ROOT','SET-ROOT'}, update_json(info,'root',varargin{1});
     otherwise
       error('Unknown command "%s"', cmd)
@@ -91,50 +79,36 @@ end
 %%
 function filepath = get_complete_filepath(filename,info,varargin)
 
-named = @(v) strncmpi(v,varargin,length(v)); 
-if any(named('sub')) || any(named('tag'))
-  info = set_subject_ID(info,varargin{:});
-  info = update_json(info,'sub',sub);  
-end
-
+named = @(v) strncmpi(v,varargin,length(v));
 tok  = find(filename == '~',1);
 
 if filename(1) == '~' 
-  root = [info(1).root]; % ~/source/***    
-elseif strncmpi(filename,'sub~',4) % ~/primary/sub-XX/folder/data.mat  
-  root = [info(1).root filesep 'primary' filesep info.sub];
-elseif strncmpi(filename,'out~',4) || strncmpi(filename,'deri',4)
-  root = [info(1).root filesep 'derivative']; 
-else % other folders inside of 
+  root = info(1).root; % e.g. ~/source/***
+elseif strncmpi(filename,'out~',4)
+  root = [info(1).root filesep 'output'];
+elseif strncmpi(filename,'in~',3)
+  root = [info(1).root filesep 'input']; 
+else
+  stub = filename(1:tok-1);  
+  for search = {'input','output',''}
+    root = [info(1).root filesep search{1} filesep stub]; 
   
-  root = filename(1:tok-1);
-  list = dir([info.root '/primary/' info.sub '/*']); 
-  list = list([list.isdir]);  
-  
-  if ~any(strcmp({list.name},root)) && ~any(named('-make'))
-    % if not found in /primary/sub-xxx, look in ~/
-    list = dir([info.root '/*']); 
-    list = list([list.isdir]);
+    if exist(root,'dir') == 7, break, end
   end
   
-  if ~any(strcmp({list.name},root))
-    if any(named('-make')) 
-      mkdir([list(1).folder filesep root])
-      list(1).name = root; 
-    else
-     if ~any(named('-q'))
-       warning('ViNERS:file:missingSampleType', ...
-               '"%s" not found in ~/primary/%s or ~/', root, info.sub);
-     end
-     filepath = ''; 
-     return
-    end
+  if exist(root,'dir') ~= 7
+      error('Neither ''in~\\%s'' nor ''out~\\%s'' exists, %s', ...
+              stub, stub, 'please check your requested path')
+    
+      % going to have to be strict about this, I think.
+      error('%s, please refactor "%s" to use in~, out~, or ~\\path', ...
+              'This functionality has been removed from tools.file', ...
+               filename) %#ok<UNRCH>
   end
-  root = [list(1).folder filesep root];
 end
 
 filepath = [root filename(tok+1:end)]; 
-filepath = regexprep(filepath,'[\\/]',filesep); 
+filepath = regexprep(filepath,'[\\/]+',filesep); 
 
 if any(named('prompt')) || any(named('-prompt'))
   filepath = get_filepath_prompt(filepath);
@@ -147,35 +121,12 @@ if any(filepath == '%'), return, end % probably going to tools.file('GET', ... )
 
 a_dir = ismember(filepath(end),'/\'); % asked for a folder path? 
 if a_dir && any(named('-make')), mkdir(filepath), return, end
+if a_dir, a_dir = 'folder'; else a_dir = 'file'; end
 
-% 
-list = dir([fileparts(filepath) filesep '.reference']); 
-if ~isempty(list)
-  list = list(max_(list,'datenum'));
-  fid = fopen([list.folder filesep list.name],'rt');
-  lnk = ''; 
-  while ~feof(fid)
-    lnk = strtrim(fgetl(fid));
-    if isempty(lnk), continue, end
-    if ismember(lnk(1),'%#'), lnk = ''; continue, end        
-    if any(lnk == '~'), lnk = tools.file(lnk); end
-    break
-  end
-  fclose(fid);
-  if isempty(lnk)
-      warning('ViNERS:file:emptyRefFile', ...
-          'The path "%s" contained a .reference file, %s', p_path, ...
-                    'but that .reference file was empty!')
-  elseif ~exist(lnk,'dir')
-      warning('ViNERS:file:badRefFile', ...
-          'The path "%s" %s, but the linked path "%s" was not found.', ...
-                    p_path, 'contained a .reference file', lnk);
-  else filepath = strrep(filepath,fileparts(filepath),lnk);
-  end
+if any(named('-v')) || isdeployed
+    warning('BIDSfile:notFound','Requested %s "%s" does not exist.',a_dir,filename), 
 end
 
-if a_dir, a_dir = 'folder'; else a_dir = 'file'; end
-if any(named('-v')), warning('ViNERS:file:notFound','Requested %s "%s" does not exist.',a_dir,filename), end
 return
 
 
@@ -406,152 +357,33 @@ named = @(v) strncmpi(v,varargin,length(v));
 
 if any(named('clear')), this = []; end
 if isempty(this)  
-  this = tools.configuration('noload'); 
-  this.root = fileparts(mfilename('fullpath'));  
+  this = tools.configuration('noload');   
+  if isdeployed, this.root = pwd; 
+  else this.root = fileparts(mfilename('fullpath'));  
+  end
+  
   this.file = [this.root filesep 'running.json'];
   % this.root = regexprep(this.root,'([\\/])code[\\/].*$','');    
   this.root = regexprep(this.root,'([\\/])common[\\/].*$','');
+  if isdeployed
+    fprintf('initialising tools.file: ''~'' = ''%s''\n', this.root)
+    % fprintf('pwd = %s\nmfilename(''fullpath'') = %s\n', pwd, mfilename('fullpath'))
+    % fprintf('tools.config(''root'') = %s', tools.configuration('root'))
+  end
 end
+
 if isempty(strfind(ctfroot, 'MATLAB')), this.pid = getpid; %#ok<STREMP>
 else  this.pid = feature('getpid');
 end,  this.time = now;
 
-FLAG_update = 0; 
-json = [];  %#ok<NASGU>
+% #ifdef OSPARC
 
-try tools.semaphore('wait',LOCK_HANDLE);
-    tools.semaphore('post',LOCK_HANDLE); 
-catch C, tools.semaphore('create',LOCK_HANDLE,1); %#ok<NASGU>
+if isempty(info), info = this; 
+elseif info.pid ~= this.pid, info = this;
 end
-
-if isempty(info) % Persistent info not supplied
-  
-  if exist(this.file,'file')
-    json = json_to_struct(this.file);
-    % No longer includes a name check
-    if any(json.pid == this.pid) % 
-        this.sub = json.sub{json.pid == this.pid};
-    else [~,sel] = max(json.time); % most recent
-      this.sub = json.sub{sel};        
-      json.pid(end+1) = this.pid;
-      json.sub{end+1} = this.sub;
-      json.time(end+1) = this.time;
-      FLAG_update = 1;
-    end
-  else 
-    warning('ViNERS:file:missingProcessIDFile', ...
-          '[%d] Could not locate (%s)\n', this.pid, ...
-                         strrep(this.file,this.root,'~'))
-    this.sub = 0;
-  end
-else % Persistent info supplied, double-check PIDs
-  if info.pid == this.pid 
-    if this.time > info.time + 1, FLAG_update = 1; end    
-  else FLAG_update = 1;
-    error TODO_resolve_check_PID
-  end
-end
-
-assert(~isempty(this),'"this" became empty after loading process info')
-
-%% Do any updating? 
-if nargin > 1 % Name, value syntax
-  for ii = 1:2:length(varargin)
-    this.(varargin{ii}) = varargin{ii+1};
-  end  
-  FLAG_update = 1;
-end
-
-info = this; % value to be returned
-if ~FLAG_update && ~isempty(fieldnames(info)), return, end
-
-tools.semaphore('wait',LOCK_HANDLE);
-lock = onCleanup(@()tools.semaphore('post',LOCK_HANDLE));
-
-if ~exist(this.file,'file'), make_pids_file(this.file, info), end
-
-fid = fopen(this.file,'r+t');
-str = fread(fid,inf,'*char')';  
-json = json_to_struct(str,true);
-pad_len = ftell(fid);
-frewind(fid);
-
-%% Write JSON file 
-
-timed_out = (json.time < now-7);
-json.pid(timed_out) = [];
-json.sub(timed_out) = []; 
-json.time(timed_out) = [];
-
-this_session = (json.pid == this.pid);
-if any(this_session)
-  json.sub(this_session) = {this.sub};
-  json.time(this_session) = this.time;
-else
-  json.pid(end+1) = this.pid;
-  json.sub(end+1) = {this.sub};
-  json.time(end+1) = this.time;
-end
-
-fprintf(fid,'\n// PROCESS file generated %s by %s\n', ...
-                         datestr(this.time),this.user);
-fprintf(fid,'{ "name": "%s",\n  "pids":[\n', this.name);
-for ii = 1:numel(json.pid)
-  
-  if ii < numel(json.pid), comma = ','; else comma = ''; end
-  fprintf(fid,'\t[%d,"%s",%f]%s\n',json.pid(ii), json.sub{ii}, ...
-          json.time(ii),comma);
-end
-fprintf(fid,'  ],\n}\n');
-
-dat_len = ftell(fid);
-if dat_len < pad_len % add blank to end of file
-  fprintf(fid,'%s',char(' '*ones(1,pad_len-dat_len)));
-end
-
-clear lock % tools.semaphore('post',LOCK_HANDLE);
-
 return
-
-function s = json_to_struct(filename,recurse_flag)
-%%
-if nargin == 1 || ~recurse_flag
-  
-  tools.semaphore('wait',LOCK_HANDLE);
-  lock = onCleanup(@()tools.semaphore('post',LOCK_HANDLE));
-  
-  fid = fopen(filename,'rt');
-  json = fread(fid,inf,'*char')';  
-  fclose(fid);
-  clear lock % unlock
-  
-else json = filename; 
-end
-
-json = regexp(json,'{.*}','match','once'); % remove header footer
-json = regexprep(json,'[\\/]+','\\\\');
-json = tools.parse_json(json);
-
-json = cat(1,json.pids{:});
-
-s.pid = cat(1,json{:,1});
-s.sub = cat(1,json(:,2));
-s.time = cat(1,json{:,3});
-
-return
-
-
-function make_pids_file(filename, info)
-
-fi = fopen(filename,'wt');
-fprintf(fi,'\n// PROCESS file generated %s by %s\n',datestr(info.time),info.user);
-fprintf(fi,'{ "name": "%s",\n  "pids":[\n', info.name);
-fprintf(fi,'    [%d,"%s",%f],\n[%d,"%s",%f]\n  ],\n}', ...
-                0,info.sub,info.time,info.pid,info.sub,info.time);
-fclose(fi);
-
-
-function k = LOCK_HANDLE, k = 905792; % randomly generated number
+% #else NORMAL_DEPLOY
+% ... 135 lines of code removed from tools.file
 
 function list = list_path_contents(varargin)
 

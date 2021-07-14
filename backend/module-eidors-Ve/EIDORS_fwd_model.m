@@ -1,6 +1,38 @@
 
-function nerve_anatomy (varargin)
-% nerve_anatomy(geometry, ...) runs the electroanatomical model implemented
+
+function EIDORS_fwd_model (mesh_file, sigma_file, varargin)
+
+if nargin < 1 || isempty(mesh_file)
+  fprintf('Arg 1 not set, using example mesh file\n')
+  mesh_file = './input/demo/example mesh.mat'; 
+end
+
+if nargin < 1 || isempty(mesh_file)
+  % fprintf('Arg 2 not set, using default conductivities\n')
+  sigma_file = './input/default-conductivity.json'; 
+end
+
+tools.file('root',pwd); % set 'root' to this folder
+
+sigma = tools.parse_json(sigma_file); 
+sigma = [sigma.sigma{:}];
+
+run_FWD_model(mesh_file, '-sigma', sigma, varargin{:})
+
+
+
+
+
+
+
+
+
+
+
+error TODO
+
+function run_FWD_model(varargin)
+% EIDORS_fwd_model(geometry, ...) runs the electroanatomical model implemented
 % using EIDORS for electrical stimulation & recording from a peripheral 
 % nerve, including meshing the model in gmesh and gnerating any neccessary
 % thin-layers
@@ -35,680 +67,118 @@ tools.setupEIDORS;
 named = @(v) strncmpi(v,varargin,length(v)); 
 get_ = @(v) varargin{find(named(v))+1};
 
-% save file to be read by insert_gmsh_electrodes during compilation:
-% @[mesh.insert_gmsh_electrodes('-import','elec_geom.mat')] 
-% if exist('e','var'), save elec-geom.mat -struct e , end %#ok<USENS>
+do_PLOT = any(named('-p')) == isdeployed; 
 
-if any(named('-fwd-model')) % expose "build_forward_model"
-  fmdl = build_forward_model(get_('-fwd-model')); % set up non-homogenous anisotropic conductivity
-  assignin('caller','fmdl',fmdl);
-  return
+if any(named('-q')) && ~isdeployed, printf = @(varargin) []; 
+else                                printf = @fprintf; 
 end
 
-if any(named('-geom')), e = get_('-geom'); 
-elseif nargin > 1 && isstruct(varargin{1}), e = varargin{1};
-elseif any(named('-fix-m')), e = []; % fill in in a moment
-else e = load(tools.cache('path','elec-geom.mat'));
+%% Load specififed mesh
+
+if any(named('-mesh')), input_mesh = get_('-mesh');
+elseif nargin > 0 && exist(varargin{1},'file'), input_mesh = varargin{1};
+else error('No mesh file supplied, please run module_nerve_mesher')
 end
-
-if ~isfield(e,'MeshLengthMax'),  e.MeshLengthMax = 0.1;   end
-if ~isfield(e,'Perineurium_mm')
-    warning('using default perineurium, 1 um')
-    e.Perineurium_mm = 1e-3; 
-end
-
-if any(named('-out')), output_name = get_('-out');
-elseif any(named('-fix-m')), output_name = get_('-fix-m'); % requires name  
-  if ~exist(output_name,'file')
-    if any(named('-stim')), fn = 'stimulus*.mat';
-    else                    fn = 'sensitivity*.mat';
-    end
-    [fn,fp] = uigetfile(fn,[],tools.file('~\input\'));    
-    output_name = [fp fn];
-  end
-  
-  old_eidors_file = load(output_name);
-  e = old_eidors_file.info; % override "elec-geom.mat"
-  
-else output_name = ''; 
-end
-
-% if output_name exists but does not end in .mat: 
-if ~isempty(output_name) && isempty(regexp(output_name,'\.mat$','once'))
-    output_name = sprintf('%s (%s).mat', tools.file('out~/sensitivity'), ...
-                                         output_name);
-end
-
-%% Generate requested mesh
-if any(named('-fix-m')), m = old_eidors_file.model;
-else m = generate_nerve_mesh(get_,named, e); 
-     m = configure_array_electrodes(m); % Configure electrodes. 
-end
-
-%% Show the volume and electrode pattern
-preview_eidors_mesh(m)
-
-%% Preview check! [fast-ish]
-if any(named('-mesh')), return, end
+    
+m = load(input_mesh); 
 
 %% Construct virtual point electrodes and stimulation pattern for computation of sensitivity
 
-disp('Constructing current pattern ... ')
+printf('Constructing current pattern ... \n')
 % note: this code depends on exact m.object_names 
 
 m.electrode(cellfun(@isempty,{m.electrode.name})) = [];
 nE = numel(m.electrode);
 
-clf, show_fem(m), hold on
-h = get(gca,'Children'); 
-set(h,'EdgeAlpha',0.3)
-set(h,'FaceAlpha',0.1)
-
-obj_idx_ = @(n) unique( m.elems(cat(1,m.object_id{contains(m.object_name,n)}),:));
-
-% e_xyz = mean(m.nodes(m.electrode(floor(end/2)).nodes,:)); 
-% e_ref = m.electrode(floor(end/2)).name;
-% [~,idx] = sort( sqrt(sum((m.nodes-e_xyz).^2,2)) ); 
-
-if any(named('-fasc'))
-     fascicle_list = get_('-fasc');
-else fascicle_list = 1:sum(strncmp(m.object_name,'Fascicle',8)); 
+if do_PLOT
+    clf, show_fem(m), hold on
+    h = get(gca,'Children'); 
+    set(h,'EdgeAlpha',0.3)
+    set(h,'FaceAlpha',0.1)
 end
 
-for f_id = fascicle_list % Each fascicle, broken into chunks. 
-  
-    chunk_size = 1000; 
-    fascicle_id = sprintf('Fascicle%d', f_id);
-
-    [~,idx] = sort( m.nodes(:,1) ); % all points, left-to-right
-    i_sim = obj_idx_(fascicle_id);  % FascicleN and P_FascicleN
-    
-    if any(named('-fix-m'))
-      i_sim = get_missing_indices(old_eidors_file, fascicle_id, i_sim);
-      if isempty(i_sim), continue, end      
-    end
-    
-    if any(named('-quick-sample'))
-      i_sim = get_chebySample_indices(m,f_id,1024); 
-    end
-    
-    idx(~ismember(idx,i_sim)) = []; % idx becomes i_sim but sorted
-    
-    % idx(m.nodes(idx,1) < 0) = []; Array not garunteed to be symmetrical
-    idx(m.nodes(idx,2) < 0) = [];   % remove negative Y
-    idx(ismember(idx,m.boundary(:))) = []; % remove boundary
-    
-    idx_full = idx; 
-    
-    if numel(idx) < 1800, chunk_size = 1800; 
-    else n_chunk = round(numel(idx)/chunk_size);
-         chunk_size = ceil(numel(idx)/n_chunk);
-    end
-
-    % TODO - can we parfor this? 
-    for chunk = 1:max(1,ceil(numel(idx_full) / chunk_size))
-        %% Do in lots of 1000 points, keeps the slowness managable.
-        m.electrode(cellfun(@isempty,{m.electrode.name})) = [];
-
-        idx = (1:chunk_size) + chunk_size * (chunk-1);
-        idx(idx > numel(idx_full)) = []; 
-        idx = idx_full(idx); 
-
-        if isempty(idx), continue, end
-        
-        if any(named('-set-zc'))
-          [m.electrode.z_contact] = deal(get_('-set-zc'));
-        end
-        
-        nP = numel(idx);
-        ref = nE + nP + 1; 
-
-        v_ = @(x) reshape(x,1,[]);
-        meas_pattern = sparse(v_((1:nE)' * [1 1]), [1:nE ref*ones(1,nE)], ...
-                                                [ones(1,nE) -ones(1,nE)]);
-        m.stimulation = struct([]);
-        
-        if any(named('-stim'))
-          ref = nE + 1;
-          meas_pattern = sparse(v_((1:nE)' * [1 1]), [1:nE ref*ones(1,nE)], ...
-                                                  [ones(1,nE) -ones(1,nE)]); % Updated reference
-          for ii = 1:nE 
-              m.stimulation(ii).stimulation = 'Amp';
-              if any(named('-mono'))
-                   stim_pattern = sparse([ii ref],[1 1],[1 -1],nE+1,1);
-              else stim_pattern = sparse([ii mod(ii,nE)+1],[1 1],[1 -1],nE+1,1);
-              end
-              m.stimulation(ii).stim_pattern = stim_pattern;
-              m.stimulation(ii).meas_pattern = meas_pattern(stim_pattern(1:end-1) == 0,:);
-          end        
-        elseif any(named('-veri')), m = mk_verification_pattern(m);
-        else 
-          m.stimulation(nP).stimulation = 'Amp';
-          m.stimulation(nP).stim_pattern = sparse([nP+nE ref],[1 1],[1 -1]);
-          m.stimulation(nP).meas_pattern = meas_pattern; 
-          for ii = 1:nP % Insert point current sources 
-            m.electrode(ii+nE).nodes = idx(ii);
-            m.electrode(ii+nE).z_contact(ii+1) = 1;
-            m.stimulation(ii).stimulation = 'Amp';
-            m.stimulation(ii).stim_pattern = sparse([ii+nE ref],[1 1],[1 -1]);
-            m.stimulation(ii).meas_pattern = meas_pattern;
-          end
-          plot3(m.nodes(idx(1:nP),1), m.nodes(idx(1:nP),2), m.nodes(idx(1:nP),3), '.')
-          pause(0.1)
-        end
-        
-        %% Set up reference electrode
-        m = setup_ref_electrodes(m,ref,chunk);
-
-        %% Set conductivities and run model
-        
-        fprintf('Running field simulation [%s chunk %d] ... \n', fascicle_id, chunk)
-        if any(named('-sigma')), % Import volume conductivities from fitted transimpedance data
-             em = build_forward_model(m,get_('-sigma')); % use custom anisotropic conductivities
-        else em = build_forward_model(m); % set up non-homogenous anisotropic conductivity
-        end 
-        
-        if any(named('-eit-model')), % Import volume conductivities from fitted transimpedance data
-            em = import_fitted_conductivities(em, get_('-eit-model')); % set up non-homogenous anisotropic conductivity
-        end
-        
-        if exist('elem_data_isotropic','var')
-            em.elem_data = elem_data_isotropic;
-        end
-        
-        if any(named('-stimulus')) || ~any(named('-direct'))
-
-           em.fwd_solve.get_all_meas = 1; % Get ALL points
-           v_meas = fwd_solve(em); % solve EIDORS electric field simulation 
-           v_meas = v_meas.volt;             
-
-           ok = cat(1,m.object_id{strncmp(m.object_name,'P_Fa',3)});
-           if ~any(ok), 
-             ok = cat(1,m.object_id{strncmp(m.object_name,'Fascicle',3)});
-           end
-
-           if any(ok)
-             ok = unique(m.elems(ok,:));
-             scatter3(m.nodes(ok,1), m.nodes(ok,2), m.nodes(ok,3), 10, ...
-                              v_meas(ok,1),'o'), colormap magma
-             caxis(quantile(v_meas(ok,1),[.01 .99]));
-           end
-           
-           if isempty(output_name), output_name = tools.file('get', ... 
-                                'sub~/eidors/stimulus (%d).mat','next'); 
-           elseif contains(output_name,'sensitivity')
-             output_name = strrep(output_name,'sensitivity','stimulus');
-           elseif exist(output_name,'file')
-             output_name = tools.file('get',output_name,'next'); 
-           end
-      
-           m.name = 'Extracellular potential simulation';
-           info = e;
-           model = m;
-           v_extracellular = v_meas;
-           save(output_name,'info','model','v_extracellular')
-           return
-        else
-            
-          v_meas = fwd_solve(em); % solve EIDORS electric field simulation
-          v_meas = reshape(v_meas.meas,nE,[]);        
-          disp('Saving to "eidors-im_pot.mat" ... ')
-          save(tools.file('get',tools.cache('PATH', ... 
-                          'eidors-im_pot_%s_chunk%02d (%%d).mat'), ... 
-                          'next',fascicle_id,chunk),'m','v_meas')
-        end
-        
-        if any(isnan(v_meas(:)))
-          eidors_cache clear
-          error('Something went awry, %0.1f%% of v_meas came out NaN', ...
-                                       100*mean(isnan(v_meas(:))))
-        end
-        if any(named('-veri')), break, end % for each fascicle
-    end % chunk loop
-
-    % % Debug view using EIDORS plot function: 
-    % clf, show_slices(img_bkgnd,[0 inf inf; inf 0 inf; inf inf 0])
-end % fascicle_ID loop
-
-%%
-fprintf('Done!\n')
-
-if any(named('-fix-m')), coalesce_EIDORS(old_eidors_file,output_name);  
-else coalesce_EIDORS(output_name,'new');
+if any(named('-set-zc'))
+  [m.electrode.z_contact] = deal(get_('-set-zc'));
 end
 
+v_ = @(x) reshape(x,1,[]);
+
+%% Set stimulating and reference electrodes
+
+ref = nE + 1;
+meas_pattern = sparse(v_((1:nE)' * [1 1]), ...
+                         [1:nE ref*ones(1,nE)], ...
+                         [ones(1,nE) -ones(1,nE)]); % Updated reference
+m.stimulation = struct([]);
+
+for ee = 1:nE 
+    m.stimulation(ee).stimulation = 'Amp';
+    stim_pattern = sparse([ee ref],[1 1],[1 -1],nE+1,1); % Monopolar pattern 
+    m.stimulation(ee).stim_pattern = stim_pattern;
+    m.stimulation(ee).meas_pattern = meas_pattern(stim_pattern(1:end-1) == 0,:);
+end        
+        
+
+m = setup_ref_electrodes(m,ref); % Set up reference electrode
+
+%% Set conductivities and run model
+printf('Running field simulation ... \n')
+if any(named('-sigma')), % Import volume conductivities from fitted transimpedance data
+     em = build_forward_model(m,get_('-sigma')); % use custom anisotropic conductivities
+else em = build_forward_model(m); % set up non-homogenous anisotropic conductivity
+end 
+
+em.fwd_solve.get_all_meas = 1; % Get ALL points
+v_meas = fwd_solve(em); % solve EIDORS electric field simulation 
+v_meas = v_meas.volt;
+
+if do_PLOT
+
+  ok = cat(1,m.object_id{strncmp(m.object_name,'P_Fa',3)});
+  if ~any(ok), 
+    ok = cat(1,m.object_id{strncmp(m.object_name,'Fascicle',3)});
+  end
+
+  if any(ok)
+    ok = unique(m.elems(ok,:));
+    scatter3(m.nodes(ok,1), m.nodes(ok,2), m.nodes(ok,3), 10, ...
+                      v_meas(ok,1),'o'), colormap(tools.magma)
+    caxis(quantile(v_meas(ok,1),[.01 .99]));
+  end
+end
+
+%% Build output file 
+
+if any(named('-out')), output_name = get_('-out');
+else output_name = tools.file('get','out~/extracellular-potential (%d).mat','next');
+end
+
+m.name = 'Extracellular potential simulation';
+model = m;
+v_extracellular = v_meas;
+
+fileparts_output_name = fileparts(output_name);
+if ~exist(fileparts_output_name,'dir')
+    warning('ViNERS:mesh:makedir','making %s', fileparts_output_name)
+    mkdir(fileparts_output_name)
+end
+
+save(output_name,'model','v_extracellular')
+         
 
 return % everything after this is visualisation
 
-%%
-figure(1) %#ok<UNRCH>
-clf, show_fem(m), hold on
-
-nE = find(cellfun(@isempty,{m.electrode.name}),1)-1;
-nP = size(v_meas,2);
-ee = 2; 
-
-h = get(gca,'Children'); 
-hp = arrayfun(@(o) isa(o,'matlab.graphics.primitive.Patch'),h); 
-delete(h(~hp))
-h = h(hp);
-
-set(h,'EdgeAlpha',0.3)
-set(h,'FaceAlpha',0.5)
-set(h(1),'FaceAlpha',0)
-
-meas_xyz = m.nodes([m.electrode(nE+(1:nP)).nodes],:);
-
-% patch('Faces',model.elems(carrier,:),'Vertices',model.nodes,'EdgeColor','r','FaceAlpha',0)
-
-scatter3(meas_xyz(:,1),meas_xyz(:,2),meas_xyz(:,3), [], v_meas(ee,:),'s','filled')
-title(m.electrode(ee).name)
-
-caxis([min(v_meas(ee,:)) max(v_meas(ee,:))])
-colormap(magma), colorbar('SouthOutside')
-
-zoom = 0.02 * [1 -1; -1 1] + [1 0; 0 1];
-axis(axis * blkdiag(zoom,zoom,zoom)), grid on
-set(gca,'Color','none')
-
-clear h hp zoom ee
-
-% axis([0 2.2 -1 1 -2 2])
-
-%% Distance - sensitivity measure 
-
-figure(2), clf, hold on
-
-for ee = 1:nE 
-    e_xyz = mean(m.nodes(m.electrode(ee).nodes,:),1);
-    e_dist = sqrt(sum((e_xyz - meas_xyz).^2,2));
-    plot(e_dist,v_meas(ee,:),'o','MarkerSize',4)
-end
-
-tools.tidyPlot
-xlabel('Distance from electrode, mm')
-ylabel('Sensitivy, µV / µA')
-clear ee d0 
-
-% set(gca,'YScale','log')
-% The response (µV/µA) seems to be linear w.r.t. conductivity as expected
-return
-
-function out = coalesce_EIDORS(outname,inputs)
-
-default_in = '*(1).mat'; % <<< Which EIDORS sim do we want? 
-cache_path = tools.cache('path'); % <<< Where do we find it?
-
-if nargin < 2, inputs = default_in; end
-if nargin < 1 || isempty(outname)
-  outname = tools.file('get','out~/sensitivity (%d).mat','next');
-end
-
-if isstruct(outname) % append mode   
-  out = outname;
-  outname = inputs;
-  inputs = 'new';
-else out = []; 
-end
-
-if any(inputs == '*'), list = dir([cache_path inputs]); 
-elseif strncmpi(inputs,'new',3)    
-    list = dir([cache_path '*.mat']); % everything
-    [~,ff] = max([list.datenum]); % newest
-    
-    inputs = regexprep(list(ff).name,'[^\-\(]+\d+','*'); % make filename less unique
-    list = dir([cache_path inputs]); % get matching simpler filename
-end
-
-if strcmp(inputs,'new;GETNAME'), out = outname; return, end
-
-%%
-save_stimpattern = 0; 
-
-for ff = 1:length(list)
-    
-    f_id = regexp(list(ff).name,'Fascicle\d+','match','once');
-    
-    if isempty(f_id), 
-        warning('pnModel:EidorsParse', ...
-                'Unclear how to parse "%s"',list(ff).name)
-    end
-    
-    % Load chunk
-    in = load([cache_path list(ff).name]);    
-    idx = cellfun(@length, {in.m.electrode.nodes}) == 1; %% Point sources
-    xyz = [in.m.electrode(idx).nodes];
-   
-    if isempty(out), % Initialise
-        out = struct;
-        out.model = in.m; 
-        out.model.electrode(idx) = []; 
-        out.model.stimulation = []; 
-        
-        if exist('elec-geom.mat','file')
-          out.info = load('elec-geom.mat'); 
-        elseif exist(tools.cache('path','elec-geom.mat'),'file')
-          out.info = load(tools.cache('path','elec-geom.mat'));
-        else
-          out.info.SplineIndex = 100; % default fascicle
-        end
-        
-        if ~isempty(which('mk_inhomogenous')) % on path?
-            out.info.conductivity = build_forward_model;
-        end
-        
-        ret = cellfun(@(x) find(x==-1), {in.m.stimulation.stim_pattern});
-        save_stimpattern = save_stimpattern | numel(unique(ret)) > 2; 
-    end
-    if ~isfield(out,f_id)
-       out.(f_id).pot = [];
-       out.(f_id).idx = []; 
-       if save_stimpattern, out.(f_id).stim = {}; end
-    end        
-    out.(f_id).pot = [out.(f_id).pot in.v_meas]; 
-    out.(f_id).idx = [out.(f_id).idx xyz]; 
-    
-    if save_stimpattern
-       out.(f_id).stim = [out.(f_id).stim {in.m.stimulation}]; 
-    end
-end
-
-out.utils.x_ = '@(i) out.model.nodes(i,1)';
-out.utils.y_ = '@(i) out.model.nodes(i,2)';
-out.utils.z_ = '@(i) out.model.nodes(i,3)';
-out.utils.fac_ = '@(i) out.(sprintf(''Fascicle%d'',i)).idx'; 
-
-if ~exist(fileparts(outname),'dir'), mkdir(fileparts(outname)), end
-disp(['Saving ' outname])
-save(outname,'-struct','out')
-
-return
-%% Quick test
-
-disp('Running quick debug plot') %#ok<UNRCH>
-
-for f = fieldnames(out.utils)' % Create utility local functions
-    eval(sprintf('%s = %s;',f{1},out.utils.(f{1})));
-end
-
-nF = nanmax(str2double(regexp(fieldnames(out),'\d+','match','once')));
-
-for ff = 1:nF
-    if ~isfield(out,sprintf('Fascicle%d',ff)), continue, end    
-    plot(z_(fac_(ff)),y_(fac_(ff)),'.')
-    hold on, axis equal
-end
-
-tools.tidyPlot
-
-function m = generate_nerve_mesh(get_,named, e)
-
-PN_mesh = tools.cache('PATH','pelvic_nerve'); 
-PN_mesh = @(ext)[PN_mesh ext]; % output file
-
-if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
-
-  geo_template = dir(tools.file('~/input/array/*.geo.template','-nomake')); % Check for a subject-specific file first
-  
-  if any(named('-template')), geo_template = get_('-template');
-  elseif ~isempty(geo_template)
-    geo_template = [geo_template(1).folder filesep geo_template(1).name];
-  elseif exist(PN_mesh('.geo.template'),'file')
-    geo_template = PN_mesh('.geo.template');
-  else
-    geo_template = tools.file('~/input/array/pelvic_nerve.geo.template');
-  end
-  t = tic;
-  
-  make_opts = {'-usev','-output',PN_mesh('.geo'), ...
-                  'virtual_thinlayer','exterior_len',e.MeshLengthMax};
-  
-  if any(named('-make-o')), more_opts = get_('-make-o');
-    if ~iscell(more_opts), more_opts = {more_opts}; end
-    make_opts = [make_opts more_opts];
-  end
-  
-  if ~exist(PN_mesh('.geo'),'file')
-    tools.makeFromTemplate(geo_template, make_opts{:})
-  else   warning('pnModel:existing_geo_file', ...
-                 'Using existing .geo file (%s). %s', PN_mesh('.geo'), ...
-                 'If this is not intended, call tools.cache(''reset'')')
-  end
-  
-  % use gmsh.exe to convert the .geo file to a .msh file:
-  if ~exist(PN_mesh('.msh'),'file')  
-    path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
-    system(sprintf('"%s" "%s" -3',path_to_gmsh,PN_mesh('.geo'))); 
-  end
-
-  if ~exist(PN_mesh('.msh'),'file')
-    winopen(PN_mesh('.geo'))
-    error('Pipeline crashed during mesh generation')
-  end
-  
-  % Add thinlayer and convert to EIDORS forward model (takes a minute or two)
-  
-  m = mesh.make_gmsh_thinLayer(PN_mesh('.geo'), e.Perineurium_mm );
-  fprintf('Elapsed time is %.0f:%02.3f\n', floor(toc(t)/60), mod(toc(t),60))  
-else m = load(PN_mesh('-thin.msh.mat')); 
-end
-  
-m.boundary_numbers = ones(size(m.boundary(:,1)));
-
-%% Add internal electrodes to model 
-function m = configure_array_electrodes(m)
-% configure_electrodes introduces the electrodes to the model as empty
-% spaces (voids) - needed for internal electrodes with geometry in EIDORS
-
-if ~isfield(m,'electrode') % Find electrode in model and 
-                           % eliminate corresponding elements 
-    % Electrodes already exist as voids, dig them out here. 
-    error('Locate electrode voids code removed from an older version')
-end
-
-for ee = 1:numel(m.electrode)
-    sel = all(ismember(m.elems',m.electrode(ee).nodes))';    
-    m.elems(sel,:) = 0;
-end
-
-rzc = cumsum(m.elems(:,1) == 0); % running zero count
-
-for ii = 1:numel(m.object_id) % Re-index object map
-    oid = m.object_id{ii}; 
-    sel = m.elems(oid,1) ~= 0;
-    m.object_id{ii} = oid(sel) - rzc(oid(sel));
-end
-
-m.elems(m.elems(:,1) == 0,:) = [];     
-m.boundary = find_boundary(m);
-m.boundary_numbers = ones(size(m.boundary(:,1)));
-
-for ee = 1:numel(m.electrode) % Get boundary numbers
-
-    sel = all(ismember(m.boundary',m.electrode(ee).nodes));
-    m.boundary_numbers(sel) = ee + 1; 
-end
-clear ee ii sel oid rcz
-
-%% Clean up artifacts from electrode introduction process
-
-nE = numel(m.electrode); 
-for ee = 1:nE
-    
-    ok = ismember(m.electrode(ee).nodes,m.boundary);
-    if all(ok), continue, end
-    fprintf('[%c%d nodes removed from %s]%c\n',8,sum(~ok),m.electrode(ee).name,8)
-    bad = m.electrode(ee).nodes(~ok);
-    m.electrode(ee).nodes(~ok) = []; 
-    
-    % re-index everything again?    
-    e_bad = any(ismember(m.elems,bad),2); 
-    if ~any(e_bad)
-      reindex = arrayfun(@(x) x-sum(bad<=x), 1:max(m.elems(:)));  
-      reindex(bad) = -1; 
-      m.nodes(bad,:) = [];
-      m.elems = reindex(m.elems);
-      m.boundary = reindex(m.boundary);
-     
-      for ii = 1:numel(m.electrode)
-        m.electrode(ii).nodes = reindex(m.electrode(ii).nodes);
-      end
-%     for ii = 1:numel(m.object_id) % index over elems doesn't change
-%       m.object_id{ii} = reindex(m.object_id{ii});
-%     end      
-    end    
-end
-
-%% Need to check for orphans, otherwise sys_mat is singular
-indeg = 0*m.nodes(:,1); 
-for ii = 1:size(m.elems,1), % Much faster than equivalent arrayfun
-  indeg(m.elems(ii,:)) = indeg(m.elems(ii,:)) + 1;
-end
-
-if any(indeg == 0)
-  
-  disp('Cleaning up system matrix ... ')
-  
-  bad = find(indeg == 0);
-  reindex = arrayfun(@(x) x-sum(bad<=x), 1:max(m.elems(:)));  
-  m.nodes(bad,:) = [];
-  m.elems = reindex(m.elems);
-  m.boundary = reindex(m.boundary);
-      
-  for ii = 1:numel(m.electrode)
-    m.electrode(ii).nodes = reindex(m.electrode(ii).nodes);
-  end
-end
-
-%% Verification pattern
-function m = mk_verification_pattern(m) % IN-CONTEXT function
-
-nE = evalin('caller','nE');
-fascicle = evalin('caller','idx_full');
-
-%% Simulate semi-random pairs of points in addition to monopolar points. 
-%    FOR EACH electrode, 50% are distributred across nodes near other
-%    electrodes and 50% are distributed 
-
-nV = min(3*nE,20);
-e_nIndex = cell(nE,1); 
-v_ = @(x) reshape(x,1,[]);
-
-for ee = 1:nE % Get "close to electrode" set 
-
-  e_xyz = mean(m.nodes(m.electrode(ee).nodes,:),1);
-  [~,idx] = sort(sum((m.nodes(fascicle,:) - e_xyz).^2,2));
-  e_nIndex{ee} = fascicle(idx(1:min(2*nV,end)));
-end
-
-o_nIndex = setdiff(fascicle,cat(1,e_nIndex{:}));
-[~,seq] = sort(sum(m.nodes(o_nIndex,:).^2,2));
-seq = seq(unique(round(linspace(1,numel(seq),nV*nE))));
-o_nIndex = o_nIndex(seq);
-
-E_MAP = unique([cat(1,e_nIndex{:}); o_nIndex]);
-for ii = 1:numel(E_MAP) % Insert point current sources 
-  m.electrode(ii+nE).nodes = E_MAP(ii);
-  m.electrode(ii+nE).z_contact = 1;
-end
-E_DONE = false(size(E_MAP));
-
-nP = numel(E_MAP);
-ref = nE + nP + 1; % Revised reference index
-meas_pattern = sparse(v_((1:nE)' * [1 1]), [1:nE ref*ones(1,nE)], ...
-                                        [ones(1,nE) -ones(1,nE)]);
-
-assignin('caller','ref',ref);
-assignin('caller','nP',nP);
-assignin('caller','meas_pattern',meas_pattern);
-
-m.name = 'Verification Test Pattern';
-m.stimulation = struct;
-m.stimulation(nE).stimulation = 'Amp';
-m.stimulation(nE).stim_pattern = sparse([nP+nE ref],[1 1],[1 -1]);
-m.stimulation(nE).meas_pattern = meas_pattern; 
-
-o_snk = 1; 
-e_snk = 0; 
-s = 0; 
-
-while ~all(E_DONE)
-  
-  e_snk = mod(e_snk,nE)+1; % desynch to make e1-e2, e1-e3, etc. 
-  
-  any_new = false;
-  
-  for e_src = 1:nE    
-    %% Add elec-elec point pair
-    p1 = e_nIndex{e_src}; 
-    p2 = e_nIndex{e_snk};
-    
-    p_done = arrayfun(@(p) E_DONE(E_MAP == p), p1);    
-    p1 = p1(find(~p_done,1));
-    if isempty(p1), continue, end
-    
-    p2(p2 == p1) = [];     
-    p2 = p2(ceil(rand * numel(p2)));        
-    
-    s = s+1;     
-    s_idx = [find(E_MAP == p1) find(E_MAP == p2) ref];
-    m.stimulation(s).stimulation = 'Amp';
-    m.stimulation(s).stim_pattern = sparse(s_idx,[1 1 1],[1 -1 0]);
-    m.stimulation(s).meas_pattern = meas_pattern;
-    
-    e_snk = mod(e_snk,nE)+1;
-    E_DONE(p1 == E_MAP) = 1;
-    any_new = true;
-    
-    %% Add elec-other point pair
-    p1 = e_nIndex{e_src}; 
-    p2 = o_nIndex(o_snk);
-    
-    p_done = arrayfun(@(p) E_DONE(E_MAP == p), p1);    
-    p1 = p1(find(~p_done,1));
-    if isempty(p1), continue, end
-    
-    s = s+1;     
-    s_idx = [find(E_MAP == p1) find(E_MAP == p2) ref];
-    m.stimulation(s).stimulation = 'Amp';
-    m.stimulation(s).stim_pattern = sparse(s_idx,[1 1 1],[1 -1 0]);
-    m.stimulation(s).meas_pattern = meas_pattern;
-    
-    o_snk = mod(o_snk,numel(o_nIndex))+1;
-    E_DONE(p1 == E_MAP) = 1; 
-    E_DONE(p2 == E_MAP) = 1;
-    any_new = true;
-    
-  end
-  
-  if ~any_new, break, end
-end
-
-%%
-for ii = 1:nP % Insert monopolar-source simulations 
-   
-  s = s+1;     
-  m.stimulation(s).stimulation = 'Amp';
-  m.stimulation(s).stim_pattern = sparse([ii+nE ref],[1 1],[1 -1]);
-  m.stimulation(s).meas_pattern = meas_pattern;
-end
-plot3(m.nodes(E_MAP(1:nP),1), m.nodes(E_MAP(1:nP),2), m.nodes(E_MAP(1:nP),3), '.')
-pause(0.1)
-
 %% Add one or two reference electrodes to outer surfaces 
-function m = setup_ref_electrodes(m,ref,chunk) % IN-CONTEXT function
+function m = setup_ref_electrodes(m,ref) % IN-CONTEXT function
 
 named = evalin('caller','named');
 get_ = evalin('caller','get_');
 nE = evalin('caller','nE');
-nP = evalin('caller','nP');
 
 if any(named('-reference')),  ref_electrode = get_('-reference');
 elseif any(named('-common')), ref_electrode = [2 -1 2]; 
 else ref_electrode = [2 -1 2; 1 -1 3]; 
 end
-
-if any(named('-stimulus')), ref_electrode = ref_electrode(end,:); end
 
 d = ref_electrode(1,3); % which side to put on? [xyz] = 1-3
 idx = unique(m.boundary(m.boundary_numbers == 1,:));
@@ -729,14 +199,7 @@ m.electrode(ref).nodes = idx;
 m.electrode(ref).z_contact = 1; % changing to 0 results in NaN output
 m.gnd_node = m.electrode(ref).nodes(1); 
 
-if chunk == 1 && any(named('-reference'))
-  plot3(m.nodes(idx,1),m.nodes(idx,2),m.nodes(idx,3),'k.','MarkerSize',4)
-  text(mean(m.nodes(idx,1)),mean(m.nodes(idx,2)),mean(m.nodes(idx,3)),'COUNTER')
-end
-
-if any(named('-bipolar'))
-  error TODO_construct_bipolar_meas_pattern
-elseif size(ref_electrode,1) > 1 
+if size(ref_electrode,1) > 1 
   %% Use a second virtual distant electrode for recording reference
   % The mesh-free simplified model suggusted that the "pedestal"
   % which sensitivity peak was sitting on was be artifactual. I
@@ -774,19 +237,12 @@ elseif size(ref_electrode,1) > 1
      m.stimulation(ii).stim_pattern(ref+1) = 0;
   end
 
-  if chunk == 1 && any(named('-reference'))
-    plot3(m.nodes(idx,1),m.nodes(idx,2),m.nodes(idx,3),'k.','MarkerSize',4)
-    text(mean(m.nodes(idx,1)),mean(m.nodes(idx,2)),mean(m.nodes(idx,3)),'GROUND')
-  end
-
 end
 
 return
 
 %% use EIDORS.mk_image and fill in sigma values from the literature
 function em = build_forward_model(fmdl,sigma)
-
-% TODO - refactor this to load from the table in /source/ 
 
 if ~exist('sigma','var')
     sigma(1).name = 'Interstitial';
@@ -862,30 +318,3 @@ if ~all(done)
         sum(~done), length(done))
 end
 
-%% Quick mesh visualisation
-function preview_eidors_mesh(m,do_animate)
-
-clf, show_fem(m)
-sel = cat(1,m.object_id{strncmp(m.object_name,'Elec',4)});
-patch('Faces',m.elems(sel,:),'Vertices',m.nodes,'EdgeColor',[1 .4 .2], ...
-                        'FaceColor','w','FaceAlpha',0.2,'EdgeAlpha',0.5)
-h = get(gca,'Children');
-h(end).EdgeAlpha = 0.2;
-pause(0.1)
-
-set(gca,'CameraPosition',get(gca,'CameraPosition') .* [-1 -1 1])
-hold on, axis off
-
-if nargin < 2, return, end
-if ~do_animate, return, end
-
-for ii = 3:numel(m.object_id)
-    % be careful - there's two sets of indices for different objects which
-    % aren't necessarially in the right order. 
-    oid = m.object_id{ii};
-    h(1).Faces = m.elems(oid,:); 
-    title(m.object_name{ii})
-    ginput(1);
-end
-
-clear oid i h b t
