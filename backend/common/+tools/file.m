@@ -362,7 +362,7 @@ if isempty(this)
   else this.root = fileparts(mfilename('fullpath'));  
   end
   
-  this.file = [this.root filesep 'running.json'];
+  % this.file = [this.root filesep 'running.json'];
   % this.root = regexprep(this.root,'([\\/])code[\\/].*$','');    
   this.root = regexprep(this.root,'([\\/])common[\\/].*$','');
   if isdeployed
@@ -376,11 +376,15 @@ if isempty(strfind(ctfroot, 'MATLAB')), this.pid = getpid; %#ok<STREMP>
 else  this.pid = feature('getpid');
 end,  this.time = now;
 
-% #ifdef OSPARC
-
-if isempty(info), info = this; 
-elseif info.pid ~= this.pid, info = this;
+if nargin > 1 % Name, value syntax
+  for ii = 1:2:length(varargin)
+    this.(varargin{ii}) = varargin{ii+1};
+  end
 end
+
+% #ifdef OSPARC
+info = this;
+
 return
 % #else NORMAL_DEPLOY
 % ... 135 lines of code removed from tools.file

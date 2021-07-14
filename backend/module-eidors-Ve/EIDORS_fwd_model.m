@@ -20,16 +20,7 @@ sigma = [sigma.sigma{:}];
 run_FWD_model(mesh_file, '-sigma', sigma, varargin{:})
 
 
-
-
-
-
-
-
-
-
-
-error TODO
+return
 
 function run_FWD_model(varargin)
 % EIDORS_fwd_model(geometry, ...) runs the electroanatomical model implemented
@@ -163,6 +154,7 @@ if ~exist(fileparts_output_name,'dir')
     mkdir(fileparts_output_name)
 end
 
+printf('Saving %s\n', output_name)
 save(output_name,'model','v_extracellular')
          
 
