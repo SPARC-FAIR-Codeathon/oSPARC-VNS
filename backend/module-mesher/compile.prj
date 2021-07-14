@@ -1,25 +1,38 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3479411958" file="C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code\CDE_compile.prj" location="C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code" name="CDE_compile" preferred-package-location="C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code\CDE_compile\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
-    <param.appname>CE_nerve_mesh</param.appname>
+  <configuration build-checksum="4236191566" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+    <param.appname>nerve_mesher</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>1.0</param.version>
+    <param.version>1.1</param.version>
     <param.authnamewatermark>Calvin Eiber</param.authnamewatermark>
-    <param.email>calvin.eiber@unimelb.edu.au</param.email>
+    <param.email>ceiber@unimelb.edu.au</param.email>
     <param.company>University of Melbourne</param.company>
     <param.summary>make EIDORS mesh from nerve anatomy</param.summary>
-    <param.description>make EIDORS mesh from nerve anatomy, see documentation</param.description>
+    <param.description>this module generates an EIDORS mesh from an input descriotion of a planar or cuff electrode array and a fascicle pattern as specified as an MBF XML tracing and optionally and additional configuration script</param.description>
     <param.screenshot />
     <param.guid />
-    <param.installpath.string>\University of Melbourne\CE_nerve_mesh\</param.installpath.string>
-    <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
+    <param.installpath.string>/University_of_Melbourne/nerve_mesher/</param.installpath.string>
+    <param.installpath.combo>option.installpath.user</param.installpath.combo>
     <param.logo />
     <param.install.notes />
-    <param.target.install.notes />
-    <param.intermediate>${PROJECT_ROOT}\CDE_compile\for_testing</param.intermediate>
-    <param.files.only>${PROJECT_ROOT}\CDE_compile\for_redistribution_files_only</param.files.only>
-    <param.output>${PROJECT_ROOT}\CDE_compile\for_redistribution</param.output>
-    <param.logdir>${PROJECT_ROOT}\CDE_compile</param.logdir>
+    <param.target.install.notes>In the following directions, replace MR/v95 by the directory on the target machine where MATLAB is installed, or MR by the directory where the MATLAB Runtime is installed.
+
+(1) Set the environment variable XAPPLRESDIR to this value:
+
+MR/v95/X11/app-defaults
+
+
+(2) If the environment variable LD_LIBRARY_PATH is undefined, set it to the following:
+
+MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa64:MR/v95/sys/opengl/lib/glnxa64
+
+If it is defined, set it to the following:
+
+${LD_LIBRARY_PATH}:MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa64:MR/v95/sys/opengl/lib/glnxa64</param.target.install.notes>
+    <param.intermediate>${PROJECT_ROOT}/compile/for_testing</param.intermediate>
+    <param.files.only>${PROJECT_ROOT}/compile/for_redistribution_files_only</param.files.only>
+    <param.output>${PROJECT_ROOT}/compile/for_redistribution</param.output>
+    <param.logdir>${PROJECT_ROOT}/compile</param.logdir>
     <param.enable.clean.build>false</param.enable.clean.build>
     <param.user.defined.mcr.options />
     <param.target.type>subtarget.standalone</param.target.type>
@@ -30,7 +43,7 @@
     <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
     <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
     <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
-    <param.windows.command.prompt>true</param.windows.command.prompt>
+    <param.windows.command.prompt>false</param.windows.command.prompt>
     <param.create.log>true</param.create.log>
     <param.log.file>log_nerveMesh.log</param.log.file>
     <param.native.matlab>false</param.native.matlab>
@@ -47,7 +60,6 @@
     <unset>
       <param.icon />
       <param.icons />
-      <param.version />
       <param.authnamewatermark />
       <param.email />
       <param.company />
@@ -57,7 +69,6 @@
       <param.installpath.combo />
       <param.logo />
       <param.install.notes />
-      <param.target.install.notes />
       <param.intermediate />
       <param.files.only />
       <param.output />
@@ -78,49 +89,34 @@
       <param.example />
     </unset>
     <fileset.main>
-      <file>${PROJECT_ROOT}\main.m</file>
+      <file>${PROJECT_ROOT}/nerve_mesh.m</file>
     </fileset.main>
     <fileset.resources>
-      <file>C:\Users\Calvin\Documents\MATLAB\Keast-lab\EIDORS\eidors\startup.m</file>
-      <file>${PROJECT_ROOT}\+mesh</file>
-      <file>${PROJECT_ROOT}\+tools</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\algorithms</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\arch</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\eidors_msg.m</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\eidors_obj.m</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\eidors_startup.m</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\external</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\graphics</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\info.xml</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\interface</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\license.txt</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\meshing</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\models</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\solvers</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\startup.m</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\tests</file>
-      <file>${PROJECT_ROOT}\EIDORS\eidors\tools</file>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+plots</file>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools</file>
+      <file>${PROJECT_ROOT}/+mesh</file>
+      <file>${PROJECT_ROOT}/input</file>
     </fileset.resources>
     <fileset.package />
     <fileset.depfun>
-      <file>C:\Users\Calvin\Documents\MATLAB\Keast-lab\EIDORS\eidors\eidors_msg.m</file>
-      <file>C:\Users\Calvin\Documents\MATLAB\Keast-lab\EIDORS\eidors\eidors_obj.m</file>
-      <file>C:\Users\Calvin\Documents\MATLAB\Keast-lab\EIDORS\eidors\eidors_startup.m</file>
-      <file>${PROJECT_ROOT}\+models\nerve_mesh.m</file>
-      <file>${PROJECT_ROOT}\+plots\preview_fascicles.m</file>
-      <file>${PROJECT_ROOT}\+plots\view_mesh.m</file>
-      <file>${PROJECT_ROOT}\printInfo.m</file>
+      <file>${MATLAB_ROOT}/toolbox/local/userpath.m</file>
     </fileset.depfun>
     <build-deliverables>
-      <file location="${PROJECT_ROOT}\CDE_compile\for_testing" name="CE_nerve_mesh.exe" optional="false">C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code\CDE_compile\for_testing\CE_nerve_mesh.exe</file>
-      <file location="${PROJECT_ROOT}\CDE_compile\for_testing" name="splash.png" optional="false">C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code\CDE_compile\for_testing\splash.png</file>
-      <file location="${PROJECT_ROOT}\CDE_compile\for_testing" name="readme.txt" optional="true">C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code\CDE_compile\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}/compile/for_testing" name="readme.txt" optional="true">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_testing/readme.txt</file>
+      <file location="${PROJECT_ROOT}/compile/for_testing" name="nerve_mesher" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_testing/nerve_mesher</file>
+      <file location="${PROJECT_ROOT}/compile/for_testing" name="splash.png" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_testing/splash.png</file>
+      <file location="${PROJECT_ROOT}/compile/for_testing" name="run_nerve_mesher.sh" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_testing/run_nerve_mesher.sh</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2019a</root>
+      <root>/usr/local/MATLAB/R2018b</root>
       <toolboxes>
         <toolbox name="matlabcoder" />
+        <toolbox name="embeddedcoder" />
+        <toolbox name="gpucoder" />
+        <toolbox name="fixedpoint" />
+        <toolbox name="matlabhdlcoder" />
+        <toolbox name="polyspacebugfinder" />
         <toolbox name="neuralnetwork" />
       </toolboxes>
       <toolbox>
@@ -129,24 +125,49 @@
         </matlabcoder>
       </toolbox>
       <toolbox>
+        <embeddedcoder>
+          <enabled>true</enabled>
+        </embeddedcoder>
+      </toolbox>
+      <toolbox>
+        <gpucoder>
+          <enabled>true</enabled>
+        </gpucoder>
+      </toolbox>
+      <toolbox>
+        <fixedpoint>
+          <enabled>true</enabled>
+        </fixedpoint>
+      </toolbox>
+      <toolbox>
+        <matlabhdlcoder>
+          <enabled>true</enabled>
+        </matlabhdlcoder>
+      </toolbox>
+      <toolbox>
+        <polyspacebugfinder>
+          <enabled>true</enabled>
+        </polyspacebugfinder>
+      </toolbox>
+      <toolbox>
         <neuralnetwork>
           <enabled>true</enabled>
         </neuralnetwork>
       </toolbox>
     </matlab>
     <platform>
-      <unix>false</unix>
+      <unix>true</unix>
       <mac>false</mac>
-      <windows>true</windows>
+      <windows>false</windows>
       <win2k>false</win2k>
       <winxp>false</winxp>
       <vista>false</vista>
-      <linux>false</linux>
+      <linux>true</linux>
       <solaris>false</solaris>
-      <osver>10.0</osver>
+      <osver>4.15.0-142-generic</osver>
       <os32>false</os32>
       <os64>true</os64>
-      <arch>win64</arch>
+      <arch>glnxa64</arch>
       <matlab>true</matlab>
     </platform>
   </configuration>

@@ -53,7 +53,7 @@ end
 tools.file('root',pwd); % set 'root' to this folder
 
 if isdeployed
-  if exist(default_file,'file')
+  if exist(array_file,'file')
        printf('Found array description file: %s\n', array_file)
   else printf('Failed to find array description file: %s\n', array_file)
   end
@@ -138,8 +138,6 @@ fprintf('  tools.configuration(''noload'') = \n')
 d = tools.configuration('noload'); 
 disp(d)
 fprintf('  tools.cache = "%s"\n', tools.cache);
-
-
 fprintf(' ***************************************/ \n');
 
 

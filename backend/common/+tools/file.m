@@ -367,14 +367,17 @@ if isempty(this)
   this.root = regexprep(this.root,'([\\/])common[\\/].*$','');
   if isdeployed
     fprintf('initialising tools.file: ''~'' = ''%s''\n', this.root)
-    % fprintf('pwd = %s\nmfilename(''fullpath'') = %s\n', pwd, mfilename('fullpath'))
+    % fprintf('pwd = %s\nmfilename(''fullphttps://github.com/SPARC-FAIR-Codeathon/oSPARC-VNSath'') = %s\n', pwd, mfilename('fullpath'))
     % fprintf('tools.config(''root'') = %s', tools.configuration('root'))
   end
 end
 
-if isempty(strfind(ctfroot, 'MATLAB')), this.pid = getpid; %#ok<STREMP>
-else  this.pid = feature('getpid');
-end,  this.time = now;
+if isempty(strfind(ctfroot, 'MATLAB')) %#ok<STREMP>
+  if isdeployed, this.pid = feature('getpid');
+  else           this.pid = getpid; 
+  end
+else this.pid = feature('getpid');
+end, this.time = now;
 
 if nargin > 1 % Name, value syntax
   for ii = 1:2:length(varargin)

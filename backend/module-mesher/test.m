@@ -1,4 +1,19 @@
 
+if exist('compile','dir')
+    
+    disp('Testing COMPILED binaries')
+    
+    ! ./compile/for_testing/nerve_mesher "./input/demo/array.json" "" "input/demo/nerve-script.json"
+    
+    
+    return
+end
+    
+    
+
+
+
+
 %% EXAMPLE (1): planar-array
 
 tools.file('root',pwd)
@@ -17,3 +32,6 @@ plots.preview_fascicles
 tools.file('root',pwd)
 nerve_mesh(tools.file('input~/demo/payne2019-cuff.json'), '', ...
            tools.file('input~/demo/payne2019-nerve.json'))
+
+       
+       
