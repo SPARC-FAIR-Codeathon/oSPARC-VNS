@@ -1,0 +1,12 @@
+
+// Example JSON input file vagus nerve - 14 July 2021
+
+{ "nerve": {
+    "file": "./sub-57_sam-1.xml",    
+    // translate nerve from XML
+    "xMove":[-1220,-765]
+  },
+}
+
+
+
