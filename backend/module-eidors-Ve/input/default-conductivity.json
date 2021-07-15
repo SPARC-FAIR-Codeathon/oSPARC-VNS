@@ -28,14 +28,20 @@
 	"reference": "PMID30507555"
   },{
 	"name": "Epineurium",
-	"value": 0.083, 
+	"value": 0.15873, 
 	"unit": "S/m", 
-	"reference": ""
+	"reference": "doi:10.1088/1741-2552/aaeb0c"
   },{
 	"name": "Blood",
 	"value": 1.09, 
 	"unit": "S/m", 
 	"reference": "pmc2914348"
-  }]
+  }],  
+ "old-values":[{
+	"name": "Epineurium",
+	"value": 0.083, 
+	"unit": "S/m", 
+	"reference": "PMID14278100"
+ }]
 }
 
