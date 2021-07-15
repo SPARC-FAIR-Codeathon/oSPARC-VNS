@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3046103953" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="3563804257" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>nerve_mesher</param.appname>
     <param.icon />
     <param.icons />
@@ -91,14 +91,14 @@ ${LD_LIBRARY_PATH}:MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa
       <file>${PROJECT_ROOT}/nerve_mesh.m</file>
     </fileset.main>
     <fileset.resources>
-      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+plots</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/eidors</file>
       <file>${PROJECT_ROOT}/+mesh</file>
-      <file>${PROJECT_ROOT}/input</file>
     </fileset.resources>
     <fileset.package />
     <fileset.depfun>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+plots/preview_fascicles.m</file>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+plots/view_mesh.m</file>
     </fileset.depfun>
     <build-deliverables>
       <file location="${PROJECT_ROOT}/compile/for_testing" name="readme.txt" optional="true">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-mesher/compile/for_testing/readme.txt</file>
