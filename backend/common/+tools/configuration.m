@@ -141,6 +141,17 @@ function [me,this] = gather_configuration(CONFIG_file)
       if strcmpi(this.name,me.name) && strcmpi(this.machine, me.machine) && ...
          strcmpi(this.user,me.user), fclose(fid); return
       end
+      
+      disp('[WARNING]')
+      disp('top entry of configuration file specified for:')
+      fprintf('{ "name":"%s"\n  "user":"%s"\n  "machine":"%s"\n}\n', ...
+                 this.name, this.user, this.machine)
+      disp('my identity is:')
+      fprintf('{ "name":"%s"\n  "user":"%s"\n  "machine":"%s"\n}\n', ...
+                 me.name, me.user, me.machine)
+      disp('I''m going to use this configuration anyway, please update the configuration file')      
+      return
+      
     end
     
     if  any(txt == '{') % start-of-object
