@@ -2,11 +2,18 @@
 // CONFIGURATION file generated 23-Jun-2021 10:21:33
 
 { "env-list": [{
+    "name": "zhuang-ubuntu",
+    "user": "zhuang",
+    "machine": "ubuntu",
+    "gmsh": "/usr/bin/gmsh",
+    "neuron": "home/zhuang/miniconda3/envs/ascent/bin/nrniv",
+    "eidors": "/home/zhuang/eidors-v3.10/eidors/",
+    "toolbox-gsa": "R:\Lab-Keast-Osborne\Labdata_CDE\Data_analysis\GSAT-toolbox"
+  },{
     "name": "THE-STREAM",
     "user": "Calvin",
     "machine": "win64",
     "version": "0.0 build 75dd1fc",
-    "cache": "pn-mdl-%d/",
     "gmsh": "C:/Program Files/GMSH 4.8.3/gmsh.exe",
     "neuron": "c:/nrn/bin/nrniv.exe",
     "eidors": "C:/Users/Calvin/Documents/MATLAB/Keast-lab/EIDORS/",
@@ -15,7 +22,6 @@
     "user": "ceiber",
     "machine": "glnxa64",
     "version": "0.0 build 75dd1fc",
-    "cache": "pn-mdl-%d/",
     "gmsh": "gmsh",
     "neuron": "/home/unimelb.edu.au/ceiber/ViNERS/source/nrnmech/x86_64/special",
     "eidors": "/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/eidors/", 

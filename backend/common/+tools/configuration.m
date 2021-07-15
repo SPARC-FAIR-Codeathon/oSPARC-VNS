@@ -14,7 +14,10 @@ function [output] = configuration(varargin)
   if any(named('noload')), CONFIG_file = ''; 
   else      
     CONFIG_file = [mfilename('fullpath') '.json'];
-    if ~exist(CONFIG_file,'file')    
+    if ~exist(CONFIG_file,'file') && isdeployed
+      CONFIG_file = './configuration.json';
+    end
+    if ~exist(CONFIG_file,'file')
       if isdeployed
           fprintf('+tools.configuration.m: "%s" did not exist, %s ... \n', ...
                          CONFIG_file, 'attempting to generate empty file')
@@ -142,16 +145,17 @@ function [me,this] = gather_configuration(CONFIG_file)
          strcmpi(this.user,me.user), fclose(fid); return
       end
       
-      disp('[WARNING]')
-      disp('top entry of configuration file specified for:')
-      fprintf('{ "name":"%s"\n  "user":"%s"\n  "machine":"%s"\n}\n', ...
-                 this.name, this.user, this.machine)
-      disp('my identity is:')
-      fprintf('{ "name":"%s"\n  "user":"%s"\n  "machine":"%s"\n}\n', ...
-                 me.name, me.user, me.machine)
-      disp('I''m going to use this configuration anyway, please update the configuration file')      
-      return
-      
+      if isdeployed
+        disp('[WARNING]')
+        disp('top entry of configuration file specified for:')
+        fprintf('{ "name":"%s"\n  "user":"%s"\n  "machine":"%s"\n}\n', ...
+                   this.name, this.user, this.machine)
+        disp('my identity is:')
+        fprintf('{ "name":"%s"\n  "user":"%s"\n  "machine":"%s"\n}\n', ...
+                   me.name, me.user, me.machine)
+        disp('I''m going to use this configuration anyway, please update the configuration file')      
+        return
+      end
     end
     
     if  any(txt == '{') % start-of-object
