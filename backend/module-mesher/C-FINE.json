@@ -9,7 +9,7 @@
                            [0,0,1.66],[0,0,-0.55], 
                            [0,0,-0.55],[0,0,1.66], 
                            [0,0,-2.77],[0,0,3.88]], 
-    "ElectrodeDimensions": [1.0 0.05 2.3],
+    "ElectrodeDimensions": [2.3 0.05 1.0],
     "ElectrodeTypeIndex": [1,1,1,1,1,1,1,1],     
     "ElectrodeAngle":[0,180,0,180,0,180,0,180],
     "InsetDepth":0.02, 
