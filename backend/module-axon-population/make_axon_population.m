@@ -76,29 +76,22 @@ while 1
   
   eff_frac = 1/(1 + aff_eff_ratio); 
   aff_frac = 1 - eff_frac;
- 
+  n_axons  = [ [aff_frac eff_frac] * n_myelinated ...
+               [aff_frac eff_frac] * n_unmyelinated ];
   switch lower(n_axon_unit)
     case 'per_mm2'
       f_area_mm2 = arrayfun(@(f) polyarea(nerve.splines.outline(:,1,f), ...
                                           nerve.splines.outline(:,2,f)), ...
                                    1:size(nerve.splines.outline,3));
-      arguments = [arguments {'-counts',[aff_frac * n_myelinated ... 
-                                         eff_frac * n_myelinated ... 
-                                         aff_frac * n_unmyelinated ...
-                                         eff_frac * n_unmyelinated] * ...
-                                         f_area_mm2 }]; %#ok<AGROW>
-      printf('Axon Counts = [%s ]', sprintf(' %d',arguments{end}));
-                                       
-    case 'count'
-      arguments = [arguments {'-counts',[aff_frac * n_myelinated ... 
-                                         eff_frac * n_myelinated ... 
-                                         aff_frac * n_unmyelinated ...
-                                         eff_frac * n_unmyelinated]}]; %#ok<AGROW>
-      printf('Axon Counts = [%s ]', sprintf(' %d',arguments{end}));
-    case 'ignore'
-        n = cellfun(@numel,{ax.axon_populations.fibre_diam});
-        printf('Axon Counts = [%s ]', sprintf(' %d',n));
+      n_axons = round(n_axons * f_area_mm2);
+    case 'count',  n_axons = round(n_axons);
+    case 'ignore', n_axons = cellfun(@numel,{ax.axon_populations.fibre_diam});
     otherwise warning('unknown n_axon_unit value %s', n_axon_unit)
+        n_axons = []; 
+  end
+  if ~isempty(n_axons)
+    arguments = [arguments {'-counts', n_axons }]; %#ok<AGROW>
+    printf('Axon Counts = [%s ]', sprintf(' %d',arguments{end}));
   end
   break
 end
@@ -106,7 +99,6 @@ end
 if any(named('-:')), arguments = [arguments ...
                                   varargin(find(named('-:'))+1:end)]; 
 end
-
 axon_population('-pregenerated',ax.axon_populations,arguments{:});
                           
 if isdeployed, disp('Progress: 100%'), end
@@ -1144,8 +1136,10 @@ pop = get_('-pregen');
 nom = {}; 
 
 if any(named('-class')), tab = get_('-class');
+elseif any(named('-counts')), tab = get_('-counts'); 
 else tab = cellfun(@numel,{pop.fibre_diam});
 end
+
 t = struct;
 t.Type = repmat({'unknown type'},[numel(tab) 1]);
 t.Count = tab(:);
