@@ -96,6 +96,7 @@ if any(named('-info')) || nargout > 1
     end
   end
   
+  if any(named('-check-units')), anat = convert_units(anat,config,named); end
   gmsh = anat; return % Return the processed files and configuration    
 end
 

@@ -115,7 +115,7 @@ if isdeployed, debug_path_config_for_oSPARC, end
 
 if ~any(named('-r')), tools.cache('reset'), end
 
-if any(named('-a')), CLI_args = varargin(find(named('-a'))+1:end); 
+if any(named('-:')), CLI_args = varargin(find(named('-:'))+1:end); 
 else CLI_args = {}; 
 end
 

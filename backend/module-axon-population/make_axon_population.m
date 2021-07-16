@@ -9,63 +9,109 @@ function make_axon_population(axons_file, ...
 
 if nargin < 1 || isempty(axons_file)
   fprintf('Arg 1 not set, using default axons.mat file (rat-cervical-vagus)\n')
-  axons_file = './input/rat-cervical-vagus.mat'; 
+  axons_file = 'rat-cervical-vagus'; 
 end
 if nargin < 2
   fprintf('Arg 2 not set, using default nerve.xml file\n')
   nerve_xml = './input/demo/nerve.xml'; 
 end
-if nargin < 3, nerve_script = ''; 
-elseif strcmp(nerve_script,'demo')
-  nerve_script = './input/demo/nerve-script.json'; 
+if nargin < 3, nerve_script = './input/demo/nerve-script.json';
+end
+
+named = @(v) strncmpi(v,varargin,length(v)); 
+has_ext_ = @(a,b) strncmpi(fliplr(a),fliplr(b),length(b)); 
+
+if any(named('-q')), printf = @(s,varargin) 0; 
+else printf = @(s,varargin) fprintf([s '\n'],varargin{:}); 
 end
 
 if true
     disp('====================================================')
-    printf('Running models.nerve_mesh %s\n', datestr(now))
-    printf('{1} = %s\n{2} = %s\n{3} = %s\n',array_file, nerve_xml, nerve_script)
+    fprintf('Running models.nerve_mesh %s\n', datestr(now))
+    fprintf('{1} = %s\n{2} = %s\n{3} = %s\n',axons_file, nerve_xml, nerve_script)
     disp('====================================================')
 end
 
+t = tic; 
+
 tools.file('root',pwd); % set 'root' to this folder
-if ~exist(axons_file,'file'), axons_file = ['./input/' axons_file]; end
-axons = load(axons_file); 
+if ~exist(axons_file,'file'), axons_file = ['./input/' axons_file '.mat']; end
+printf('Loading %s', axons_file);
+ax = load(axons_file); 
 
 if isdeployed, disp('Progress: 5%'), end
 
-mesh.insert_gmsh_fascicles('-setup','-anat',anatomy);
+%% Figure out nerve anatomy 
+if ~isempty(nerve_script)
+ 
+  printf('Loading %s', nerve_script);
+  if has_ext_(nerve_script,'.mat'), n = load(nerve_script); 
+  elseif has_ext_(nerve_script,'.json'), n = tools.parse_json(nerve_script);
+  else error('%s: unknown extension, expected .mat or .json', nerve_script)
+  end      
+
+  if isfield(n,'nerve'), opts.nerve = n.nerve; else opts.nerve = n; end
+  if isfield(n,'mesh'), opts.mesh = n.mesh; end
+end
+
+if ~isempty(nerve_xml), opts.nerve.file = nerve_xml;
+elseif ~isfield(opts,'nerve'), opts.nerve.file = nerve_xml;
+end
+
+
+mesh.insert_gmsh_fascicles('-setup',opts);
 nerve = mesh.insert_gmsh_fascicles('-info','-check-units');
 
 if isdeployed, disp('Progress: 15%'), end
 
-arguments = {'-anat',nerve}; 
+arguments = {'-anat',nerve,'-out', ... 
+              tools.file('get','./output/axon-population (%d).mat','next')}; 
 
 while 1
- if nargin < 4, break, end
-    
- switch n_axon_unit
-   case 'per_mm2'
-        
-   case 'count'
-         
-   case 'ignore'
-   otherwise warning('unknown n_axon_unit value %s', n_axon_unit)
- end
-    
-  error parse_extra_arguments
-    
-    
-    
+  if nargin < 4, break, end 
+  if nargin < 7, aff_eff_ratio = 4; end % Foley and DuBois, 1937
+  if ischar(aff_eff_ratio),  aff_eff_ratio = str2double(aff_eff_ratio);   end
+  if ischar(n_myelinated),   n_myelinated  = str2double(n_myelinated);    end
+  if ischar(n_unmyelinated), n_unmyelinated = str2double(n_unmyelinated); end
+  
+  eff_frac = 1/(1 + aff_eff_ratio); 
+  aff_frac = 1 - eff_frac;
+ 
+  switch lower(n_axon_unit)
+    case 'per_mm2'
+      f_area_mm2 = arrayfun(@(f) polyarea(nerve.splines.outline(:,1,f), ...
+                                          nerve.splines.outline(:,2,f)), ...
+                                   1:size(nerve.splines.outline,3));
+      arguments = [arguments {'-counts',[aff_frac * n_myelinated ... 
+                                         eff_frac * n_myelinated ... 
+                                         aff_frac * n_unmyelinated ...
+                                         eff_frac * n_unmyelinated] * ...
+                                         f_area_mm2 }]; %#ok<AGROW>
+      printf('Axon Counts = [%s ]', sprintf(' %d',arguments{end}));
+                                       
+    case 'count'
+      arguments = [arguments {'-counts',[aff_frac * n_myelinated ... 
+                                         eff_frac * n_myelinated ... 
+                                         aff_frac * n_unmyelinated ...
+                                         eff_frac * n_unmyelinated]}]; %#ok<AGROW>
+      printf('Axon Counts = [%s ]', sprintf(' %d',arguments{end}));
+    case 'ignore'
+        n = cellfun(@numel,{ax.axon_populations.fibre_diam});
+        printf('Axon Counts = [%s ]', sprintf(' %d',n));
+    otherwise warning('unknown n_axon_unit value %s', n_axon_unit)
+  end
   break
 end
 
+if any(named('-:')), arguments = [arguments ...
+                                  varargin(find(named('-:'))+1:end)]; 
+end
 
-
-axon_population('-pregenerated',axons,arguments{:}); 
-
+axon_population('-pregenerated',ax.axon_populations,arguments{:});
                           
 if isdeployed, disp('Progress: 100%'), end
 
+toc(t)
 
 return
 
@@ -119,29 +165,17 @@ named = @(v) strncmpi(v,varargin,length(v));
 get_ = @(v) varargin{find(named(v))+1};
 v_ = @(x) reshape(x,[],1);
 
-% Adding a generic axon sourceData reader here
-[D,pop,nom,axon_types] = gather_sourcedata(varargin{:});
+
+if any(named('-pregenerated'))    
+  from_pregenerated_axon_population(get_,named);
+  return
+else
+  % Adding a generic axon sourceData reader here
+  [D,pop,nom,axon_types] = gather_sourcedata(varargin{:});
+end
 if isempty(pop), clear pop, end
 
-% Gather data or parse inputs for spatial layout and types 
-if any(named('-anat'))    
-  nerve = varargin{find(named('-anat'))+1};
-  if ischar(nerve)
-    nerve = mesh.insert_gmsh_fascicles('-info','-file',nerve,varargin{:});
-  elseif ~isfield(nerve,'fascicles'), nerve.fascicles = nerve.outline; 
-  end  
-else nerve = mesh.insert_gmsh_fascicles('-info');  
-end
-
-if iscell(nerve.outline), nerve.fascicles = nerve.outline{1}; 
-else nerve.fascicles = nerve.outline; 
-end
-
-if isfield(nerve,'Attributes') && isfield(nerve,'Children') % XML leftovers 
-    nerve = rmfield(nerve,{'Name','Attributes','Data','Children','Type'});
-end
-
-if isfield(nerve,'splines'), nerve = rmfield(nerve,'splines'); end
+nerve = get_anatomy(get_,named);
 
 %% How many axons (note: number of axons can be downsampled later)
 
@@ -518,7 +552,8 @@ if nargout == 1, return, end % Load or generate /just/ the population part of th
 nG = 24; % <<< Control down-sample resolution 
 if any(named('-nG')), nG = varargin{find(named('-nG'))+1}; end
 
-[pop,sam] = arrange_data_sample(pop, nG);
+[pop,sam] = compute_kmeans_clusters(pop, nG);
+pop = arrange_axons(D, nerve, pop, axon_types);
 
 color = summer(nG); % This is the colorscheme we're adopting for these
 color(2:2:end,:) = 1-color(2:2:end,:); 
@@ -1101,13 +1136,139 @@ nom(contains(nom(:,1),'eff'),2) = {'eff'};
 return
 
 
+function [D,pop,nom,tab] = from_pregenerated_axon_population(get_,named)
+
+D = struct; 
+
+pop = get_('-pregen');
+nom = {}; 
+
+if any(named('-class')), tab = get_('-class');
+else tab = cellfun(@numel,{pop.fibre_diam});
+end
+t = struct;
+t.Type = repmat({'unknown type'},[numel(tab) 1]);
+t.Count = tab(:);
+t.Model = repmat({''},[numel(tab) 1]);
+if numel(tab) >= 1, t.Type{1} = 'Myelinated Afferent'; 
+                    t.Model{1} = 'Gaines';              end
+if numel(tab) >= 2, t.Type{2} = 'Myelinated Efferent'; 
+                    t.Model{2} = 'MRG';                 end
+if numel(tab) >= 3, t.Type{3} = 'Unmyelinated Afferent'; 
+                    t.Model{3} = 'Sundt';               end
+if numel(tab) >= 4, t.Type{4} = 'Unmyelinated Efferent'; 
+                    t.Model{4} = 'Sundt';               end
+tab = struct2table(t);
+
+nerve = get_anatomy(get_,named);
+
+for ty = 1:numel(pop) % up or down sample 
+  
+  n = tab.Count(ty); 
+  nP = numel(pop(ty).fibre_diam);
+
+  if numel(pop(ty).fibre_diam) >= n 
+    [~,subset] = sort(rand(nP,1)); 
+    for f = fieldnames(pop)'
+      if size(pop(ty).(f{1}),1) ~= nP, continue, end
+      pop(ty).(f{1}) = pop(ty).(f{1})(subset(1:n),:);
+    end
+  else
+    superset = ceil(nP*rand(1,n-nP));
+    for f = fieldnames(pop)'
+      if size(pop(ty).(f{1}),1) ~= nP, continue, end
+      pop(ty).(f{1}) = pop(ty).(f{1})([1:end superset],:);
+    end
+  end
+end
+
+
+temp = struct; 
+
+temp.fibre_diam = [pop(1).fibre_diam; pop(2).fibre_diam];
+temp.unmyelinated_diam = [pop(3).fibre_diam; pop(4).fibre_diam];
+
+temp = arrange_axons(D, nerve, temp, tab); 
+
+pop(1).fascicle = temp.fibre_fascicle(temp.fibre_afferent);
+pop(2).fascicle = temp.fibre_fascicle(~temp.fibre_afferent);
+pop(3).fascicle = temp.unmyelinated_fascicle(temp.unmyelinated_fascicle);
+pop(4).fascicle = temp.unmyelinated_fascicle(~temp.unmyelinated_fascicle);
+
+pop(1).axon_xy = temp.fibre_xy(temp.fibre_afferent,:);
+pop(2).axon_xy = temp.fibre_xy(~temp.fibre_afferent,:);
+pop(3).axon_xy = temp.unmyelinated_xy(temp.unmyelinated_fascicle,:);
+pop(4).axon_xy = temp.unmyelinated_xy(~temp.unmyelinated_fascicle,:);
+
+%%
+if ~any(named('-no-fig'))
+    %%
+    nF = max(cat(1,pop.fascicle));
+    color = cat(1,pop.color);
+
+    figure(2), clf, hold on, % C = lines(nF);
+    set(gcf,'Position',get(gcf,'Position') .* [1 .7 1.3 1])
+    if iscell(nerve.outline)
+        fill(nerve.outline{end}(:,1),nerve.outline{end}(:,2),[.9 .9 .9],'EdgeColor','none')
+    end  
+    for ff = 1:nF
+      fill(nerve.fascicles(:,1,ff),nerve.fascicles(:,2,ff),'w','EdgeColor',[.3 .3 .3],'LineWidth',1.2)    
+
+      sel = (f_id == ff) & ~is_myelin & is_afferent;
+      plot(xy(sel,1),xy(sel,2),'.','Color',color(1,:),'MarkerSize',10) 
+
+      sel = (f_id == ff) & ~is_myelin & ~is_afferent;
+      plot(xy(sel,1),xy(sel,2),'.','Color',color(2,:),'MarkerSize',10) 
+
+      sel = (f_id == ff) & is_myelin & is_afferent;
+      plot(xy(sel,1),xy(sel,2),'o','MarkerFaceColor',(color(3,:)+1.5)/2.5, ...
+                  'MarkerSize',5,'Color',color(3,:),'LineWidth',1.2)
+
+      sel = (f_id == ff) & is_myelin & ~is_afferent;
+      plot(xy(sel,1),xy(sel,2),'o','MarkerFaceColor',(color(4,:)+1.5)/2.5, ...
+                  'MarkerSize',5,'Color',color(4,:),'LineWidth',1.2)
+    end
+    axis image, tools.tidyPlot
+
+    l_str = {'Fascicle outline','unmyelinated afferent', ...
+             'unmylinated efferent','myelinated afferent', ...
+                                    'myelinated efferent'};
+    for tt = height(tab):-1:1    
+    if tab.Count(tt) == 0, l_str(tt+1) = []; end
+    end
+
+    if iscell(nerve.outline), l_str = [{'Endoneurium'} l_str]; end
+    legend(l_str{:},'location','best')
+end
+%%
+  
+if any(named('-out')), output = get_('-out'); 
+elseif any(named('-file')), output = get_('-file'); 
+else output = tools.file('get','out~/axons (%d).mat','next');
+end
+if ~any(ismember(output,'/\'))
+    output = ['sub~/axons/axons (' output ').mat'];
+end
+
+if any(output == '~'), output = tools.file(output); end
+opts = evalin('caller','varargin');
+
+if any(named('-csv')), export_tables(pop,sam,nerve,'csv',output)  
+elseif any(named('-xls')), export_tables(pop,sam,nerve,'xlsx',output)
+else  
+  if ~isfolder(fileparts(output)), mkdir(fileparts(output)); end
+  while exist(output,'file'), output = strrep(output,'.mat','_NEW.mat'); end
+  fprintf('Saving %s\n',tools.file('T',output))
+  save(output,'pop','nerve','opts');
+end
+
+     %%
+return
+
+
 
 %% Code to arrange populations within sample fascicle
-function [pop,sam] = arrange_data_sample(pop, nG) % IN-CONTEXT function
-
-axon_types = evalin('caller','axon_types'); 
-nerve = evalin('caller','nerve'); 
-D = evalin('caller','D');
+function [pop,sam] = compute_kmeans_clusters(pop, nG)
 
 gdata = [pop.fibre_diam   pop.fibre_gratio]; 
 
@@ -1123,6 +1284,8 @@ sam.C_diam(1:2:end) = [];
 [~,sam.C_axon] = arrayfun(@(t) min(abs(t-sam.C_diam)), pop.unmyelinated_diam);
 
 clear gdata gm_fun opts    
+
+function pop = arrange_axons(D, nerve, pop, axon_types)
 
 %% Generate random axon arrangements 
 nA = sum(axon_types.Count); 
@@ -1159,6 +1322,7 @@ while true % might need multiple passes
       xy = [cellfun(@(p) nanmedian(cp(p,1)), vp) ...
             cellfun(@(p) nanmedian(cp(p,2)), vp)];
 
+      if isdeployed, fprintf('Progress: %0.1f%%', 15 + (lloyd_relax/3)*70), end
       % h.XData = xy(:,1); h.YData = xy(:,2);
   end
 
@@ -1555,5 +1719,31 @@ elseif numel(D.index) > 4 && D.index(5) > 0, v = var_(5);
 end
 
 return
+
+
+function nerve = get_anatomy(get_,named)
+
+
+% Gather data or parse inputs for spatial layout and types 
+if any(named('-anat'))    
+  nerve = get_('-anat');
+  if ischar(nerve)
+    nerve = mesh.insert_gmsh_fascicles('-info','-file',nerve);
+  else
+    if ~isfield(nerve,'outline'), nerve = nerve.splines; end
+    if ~isfield(nerve,'fascicles'), nerve.fascicles = nerve.outline; end
+  end  
+else nerve = mesh.insert_gmsh_fascicles('-info');  
+end
+
+if iscell(nerve.outline), nerve.fascicles = nerve.outline{1}; 
+else nerve.fascicles = nerve.outline; 
+end
+
+if isfield(nerve,'Attributes') && isfield(nerve,'Children') % XML leftovers 
+    nerve = rmfield(nerve,{'Name','Attributes','Data','Children','Type'});
+end
+
+if isfield(nerve,'splines'), nerve = rmfield(nerve,'splines'); end
 
 
