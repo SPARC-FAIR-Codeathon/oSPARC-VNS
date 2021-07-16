@@ -245,6 +245,9 @@ return
 function em = build_forward_model(fmdl,sigma)
 
 if ~exist('sigma','var')
+    
+    disp('Using hard-coded conductivity table. please provide a table using -sigma [list].')
+    
     sigma(1).name = 'Interstitial';
     sigma(2).name = 'Prostate';      % 0.4243 S/m % http://dx.doi.org/10.1109/TBME.2007.897331
     sigma(3).name = 'PDMS';          % [materials properties] 
@@ -258,7 +261,7 @@ if ~exist('sigma','var')
     sigma(3).value = 1e-12;
     sigma(4).value = [0.570, 0.088, 0.088]; 
     sigma(5).value = 8.7e-4;
-    sigma(6).value = 0.083;          % [6.3] ? 
+    sigma(6).value = 0.15873;        % 1/6.3 from Pelot parameters 
     sigma(7).value = 1.09; 
 
 % Perineurium 0.0021
