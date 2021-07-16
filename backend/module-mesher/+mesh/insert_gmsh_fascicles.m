@@ -85,8 +85,14 @@ if any(named('-info')) || nargout > 1
   info_result = anat; 
   
   if isfield(info_result,'splines')
-    for f = fieldnames(info_result.splines)'
-      info_result.(f{1}) = info_result.splines.(f{1});
+    if any(named('-all')) % cell output structure
+      for f = fieldnames(anat.splines)'
+        info_result.(f{1}) = {anat.splines.(f{1})};
+      end
+    else % scalar output structure (fascicles only)
+      for f = fieldnames(anat.splines)'
+        info_result.(f{1}) = anat.splines(1).(f{1});
+      end        
     end
   end
   
@@ -107,27 +113,15 @@ gmsh = w_(gmsh,'f_id = newv;\n' );
 
 insert_(anat.splines,'reset'); 
 
-if iscell(anat.splines.coeffs)
-     nF = size(anat.splines.coeffs{1},3);
-else nF = size(anat.splines.coeffs,3);
-end
+nF = size(anat.splines(1).coeffs,3);
 
 %% FOR EACH compartment 
 
-if any(named('-do'))
-    error TODO_refactor_implement_additional_mesh_compartments
-end
-
-for ii = 1:numel(anat.splines.type)
+for ii = numel(anat.splines):-1:1
     
-    this.DoSurface = strcmpi(anat.splines.type{ii},'Fascicle');
-    this.DoIndices = 1:nF; 
-    
-    % Epineurium -> this.DoIndices = 1;
-    % BloodVessel -> this.DoIndices = 1:N_bv;
-    if 0, this.DoIndices = something_else; end
-    
-    gmsh = insert_(gmsh,named,anat.splines,this,anat.splines.type{ii});
+  this.DoSurface = strcmpi(anat.splines(ii).type,'Fascicle');
+  gmsh = insert_(gmsh,named,anat.splines(ii),this);
+  
 end
 
 return
@@ -305,6 +299,13 @@ if any(named('-pI')), config.pIndex = get_('-pI');    end
 if any(named('-pL')), config.pLocation = get_('-pL'); end
 if any(named('-pR')), config.pRotation = get_('-pR');   end
 
+
+if any(named('-meshList')),   config.meshList = get_('-meshList'); 
+elseif any(named('-mesh-l')), config.meshList = get_('-mesh-l'); 
+elseif any(named('-do')),     config.meshList = get_('-do');
+elseif ~isfield(config,'meshList'), config.meshList = {'Fascicle'}; 
+end
+
 if any(named('-lc')), config.MeshLengthFascicle = get_('-lc');
 elseif any(named('-res')), config.MeshLengthFascicle = get_('-res');
 elseif any(named('-MeshLen')), config.MeshLengthFascicle = get_('-MeshLen');
@@ -344,7 +345,7 @@ return
 
 
 %% Convert MBF XML to splines 
-function xml = generate_splines(get_,named,xml,~)
+function xml = generate_splines(get_,named,xml,config)
 
 if isfield(xml,'splines'), return, end % already done
 if ~isfield(xml,'Children'), % not XML
@@ -385,6 +386,7 @@ for ii = 1:numel(contours)
     
     this = contours(ii);     
     type = regexprep(attr_(this,'name'),'-\d+','');
+    if ischar(type), type = strtrim(type); end
     if ~ismember(type,s.type)
          s.type = [s.type {type}];
          tid = numel(s.type);
@@ -457,12 +459,55 @@ else
   end
 end
 
-if ~any(named('-do'))
-  s.type= {'Fascicle'};
+
+if numel(config.meshList) == 1 && ...
+   strcmp(config.meshList{1},'Fascicle') % Default scenario
+  s.type = 'Fascicle';
   s.coeffs = s.coeffs{1};
   s.outline = s.outline{1};
 else
-  error TODO_do_additional_compartments
+  type_index = zeros(size(config.meshList));
+  for obj = 1:numel(type_index)
+    sel = strcmp(s.type,config.meshList{obj});
+    if any(sel), type_index(obj) = find(sel,1); continue, end
+    types = lower(s.type); 
+    count = cellfun(@(x) size(x,3), s.coeffs);
+    
+    switch config.meshList{obj}
+      case {'Fascicle'}          
+        sel = contains(types,'fascicle');
+        if ~any(sel), sel = contains(types,'perineur'); end
+        if ~any(sel), sel = contains(types,'endoneur'); end
+        if any(sel & ~contains(types,'outer'))
+          sel = sel & ~contains(types,'outer'); 
+        end
+        if sum(sel) > 1, sel = sel & count == max(count(sel)); end
+        type_index(obj) = find(sel,1);
+        
+      case {'Epineurium'}
+
+        sel = contains(types,'epineur');
+        if ~any(sel), sel = ~contains(types,' of '); end
+        if sum(sel) > 1, sel = sel & count == min(count(sel)); end
+        type_index(obj) = find(sel,1);
+          
+      otherwise 
+        error('Unknown %s "%s". Did you mean "%s" (%s)?', ...
+              'meshList entry', config.meshList{obj},'Fascicle', ...
+              'these are case-sensitive');
+    end
+        
+     if type_index(obj) == 0
+         tlist = sprintf(', ''%s''', s.type{:});
+         error('"%s" did not match any contours from %s: {%s}', ...
+                config.meshList{obj}, xml.filename, tlist(3:end))
+     end
+      
+  end
+    
+  s = struct('type',config.meshList, ...
+             'coeffs',s.coeffs(type_index), ...
+             'outline',s.outline(type_index));
 end
 
 xml.splines = s; 
@@ -484,6 +529,8 @@ if isfield(anat,'source'),
 else s = anat.splines; 
      anat.source = s; 
 end, s0 = s; 
+
+if numel(s) > 1, error('TODO multiple tissues'), end
 
 %%
 f_index = config.pIndex; 
@@ -559,18 +606,28 @@ anat.splines = s;
 %% apply move, scale, rotate to fascicle pattern
 function anat = apply_geometric_transforms(anat,config,varargin)
 
-s = anat.splines; 
+s = anat.splines;
 named = @(v) strncmpi(v,varargin,length(v)); 
 
 if any(named('-q')), printf = @(s,varargin) 0; 
 else printf = @(s,varargin) fprintf([s '\n'],varargin{:}); 
 end
 
-if iscell(s.outline), 
-  s.outline = s.outline{1}; 
-  s.coeffs  = s.coeffs{1};     
-  if any(named('-do')), error TODO_for_perineurium_etc, end
+if numel(s) > 1
+  new_s = [];
+  for ii = 1:numel(s)      
+    anat.splines = s(ii);
+    this = apply_geometric_transforms(anat,config, varargin{:});    
+    if isempty(new_s), new_s = this.splines;
+    else new_s(ii) = this.splines; %#ok<AGROW>
+    end
+  end
+  anat.splines = new_s;
+  return
 end
+
+% From here, we can safely assume that s is a scalar structure
+if iscell(s.type), s.type = s.type{1}; end
 
 nF = size(s.coeffs,3);
 xy0 = mean(s.coeffs(:,:),2)'; 
@@ -588,7 +645,7 @@ if isfield(config,'xRotate')
   a = deg2rad(config.xRotate(1));
   Q = [cos(a) sin(a); -sin(a) cos(a)];
 
-  printf('Rotating fascicle pattern by %gu', config.xRotate(1))
+  printf('Rotating %s pattern by %g deg', lower(s.type), config.xRotate(1))
   
   for ff = 1:nF
     s.coeffs(:,:,ff) = Q'*(s.coeffs(:,:,ff) - xy0') + xy0' ;
@@ -607,7 +664,7 @@ if isfield(config,'xScale')
     otherwise error('xScale: expected 1, 2, or 4-element vector or matrix')
   end
   
-  printf('Scaling fascicle pattern by [%g %g; %g %g]', Q')
+  printf('Scaling %s pattern by [%g %g; %g %g]',lower(s.type), Q')
   
   for ff = 1:nF
     s.coeffs(:,:,ff) = Q'*(s.coeffs(:,:,ff) - xy0') + xy0' ;
@@ -616,7 +673,6 @@ if isfield(config,'xScale')
   
 end
 
-
 if isfield(config,'xMove')
     
   while iscell(config.xMove), config.xMove = [config.xMove{:}]; end
@@ -624,7 +680,7 @@ if isfield(config,'xMove')
   dxy = reshape(config.xMove,1,[]); 
   if numel(dxy) == 1, dxy = [0 dxy]; end
     
-  printf('Displacing fascicle pattern by [%g %g]', dxy)
+  printf('Displacing %s pattern by [%g %g]',lower(s.type), dxy)
   
   for ff = 1:nF
     s.coeffs(:,:,ff) = (s.coeffs(:,:,ff) + dxy') ;
@@ -648,12 +704,9 @@ return
 function anat = convert_units(anat,config,named)
 
 if ~isfield(anat,'splines') && isfield(anat,'coeffs')
-  if ~isfield(anat,'type')
-    anat.type = {'Fascicle'}; 
-  end
+  if ~isfield(anat,'type'), anat.type = 'Fascicle'; end
   anat.splines = anat;
 end
-
 
 if ~isfield(anat,'filename')
   if isfield(anat,'info'), anat.filename = anat.info(1:min(30,end));
@@ -667,146 +720,123 @@ end
 
 if any(named('-units-mm')), factor = factor / 1000; end % input mm
 
-single_object = ~iscell(anat.splines.coeffs);
-
-if single_object,
-  anat.splines.coeffs = {anat.splines.coeffs}; 
-  anat.splines.outline = {anat.splines.outline};
+for ss = 1:numel(anat.splines) % For each object class in spline file 
+  anat.splines(ss).coeffs = anat.splines(ss).coeffs / factor; 
+  anat.splines(ss).outline = anat.splines(ss).outline / factor;
 end
-
-for pp = 1:numel(anat.splines.coeffs) % For each object class in spline file 
-  anat.splines.coeffs{pp} = anat.splines.coeffs{pp} / factor; 
-  anat.splines.outline{pp} = anat.splines.outline{pp} / factor;
-end
-
-if single_object,
-  anat.splines.coeffs = anat.splines.coeffs{1}; 
-  anat.splines.outline = anat.splines.outline{1};
-end
-
-anat.splines.z = config.zRange; 
+[anat.splines.z] = deal(config.zRange); 
 
 
 
 
 
 %% Write the gmsh code for each compartment 
-function gmsh = insert_(gmsh, named, splines, this, this_name)
+function gmsh = insert_(gmsh, named, this, object)
 
 persistent cross_section % Keep track of object indices, offset from vol_id
 if ischar(named) && strcmp(named,'reset'), cross_section = {}; return, end
 if isempty(cross_section), cross_section = {}; end
 
 %% Locate source data
-w_ = @(g,f,varargin) sprintf(['%s\n' f],g,varargin{:});
-has_ = @(v) isfield(splines,'info') && any(contains(splines.info,['SECTION ' v]));
 
-if ~strncmpi(this_name,'Fascicle',4)       
- if ~has_(this_name), warning('insert_gmsh_splines:MissingObject', ...
-            'File "%s" does not list "%s"', splines.filename, this_name)
-  return
- else
-  
-  s_list = splines.info(strncmp(splines.info,'SECTION',4));
-  section_id = find(contains(s_list,['SECTION ' this_name]),1);
-  XY = splines.coeffs{section_id}; 
- end 
-elseif iscell(splines.coeffs), XY = splines.coeffs{1}; % Fascicle = sID 1
-else                           XY = splines.coeffs;    % 
-end
+xy = this.coeffs;
+w_ = @(g,f,varargin) sprintf(['%s\n' f],g,varargin{:});
+
 %%
 
-for ii = 1:length(this.DoIndices)
+for ii = 1:size(this.coeffs,3)
     
-    if isempty(XY), 
-      warning('insert_gmsh_splines:Empty','Possible empty fascicle set')
+    if isempty(xy), 
+      warning('insert_gmsh_splines:Empty','Possible empty %s set', ...
+                                        lower(this.type))
       break
     end
   
-    xy_index = this.DoIndices(ii); 
-    
-    is_member = zeros(size(XY,2),1);
+    is_member = zeros(size(xy,2),1);
     for pp = numel(cross_section):-1:1        
-        sel = in_loop(XY(:, is_member == 0, xy_index), cross_section{pp});
-        is_member(sel) = pp+1; 
+        sel = in_loop(xy(:, is_member == 0, ii), cross_section{pp});
+        is_member(sel) = pp; 
     end
     if false && any(is_member)
         %% check in_loop result
         clf, hold on
         for pp = 1:numel(cross_section)
-            if any(is_member == pp+1), ls = '-'; else ls = '--'; end
+            if any(is_member == pp), ls = '-'; else ls = '--'; end
             plot(cross_section{pp}(1,:),cross_section{pp}(2,:),ls)
         end
-        plot(XY(1,:,xy_index),XY(2,:,xy_index),'-k','LineWidth',1.3)
+        plot(xy(1,:,ii),xy(2,:,ii),'-k','LineWidth',1.3)
+        axis equal, tools.tidyPlot, grid on
     end
-    cross_section = [cross_section {XY(:,:,xy_index)}]; %#ok<AGROW>
+    cross_section = [cross_section {xy(:,:,ii)}]; %#ok<AGROW>
     is_member(is_member>0) = is_member(is_member>0); 
     
     % Check if fascicles are specified clockwise or CCW, needed to
     % calculate thin layers correctly    
-    if ~any(named('-skip-ccw'))    
-      is_ccw = ( XY(1,3:end,xy_index)  -  XY(1,2:end-1,xy_index) ) .* ...
-               ( XY(2,2:end-1,xy_index) - XY(2,1:end-2,xy_index) ) -  ...
-               ( XY(1,2:end-1,xy_index) - XY(1,1:end-2,xy_index) ) .* ...
-               ( XY(2,3:end,xy_index)  -  XY(2,2:end-1,xy_index) );
+    if ~any(named('-skip-ccw-check'))    
+      is_ccw = ( xy(1,3:end,ii)  -  xy(1,2:end-1,ii) ) .* ...
+               ( xy(2,2:end-1,ii) - xy(2,1:end-2,ii) ) -  ...
+               ( xy(1,2:end-1,ii) - xy(1,1:end-2,ii) ) .* ...
+               ( xy(2,3:end,ii)  -  xy(2,2:end-1,ii) );
     
       if mean(sign(is_ccw)) > 0, 
-        warning('insert_gmsh_splines:WindingOrder','Flipping the order of Fascicle %d', xy_index)
-        XY(:,:,xy_index) = XY(:,end:-1:1,xy_index);
+        warning('insert_gmsh_splines:WindingOrder','Flipping the order of Fascicle %d', ii)
+        xy(:,:,ii) = xy(:,end:-1:1,ii);
       end
     end    
     
     vol_tag = 'su[1]';
     
-    if isfield(splines,'trajectory')
+    if isfield(this,'trajectory')
       
-      if iscell(splines.trajectory)
-           splines.e_this = splines.trajectory{xy_index};
-      else splines.e_this = splines.trajectory + [0 mean(XY(:,2:end,xy_index)')]; %#ok<UDIM>
+      if iscell(this.trajectory)
+           this.e_this = this.trajectory{ii};
+      else this.e_this = this.trajectory + [0 mean(xy(:,2:end,ii)')]; %#ok<UDIM>
       end      
       
-      sstr = sweep_along_curve(splines,this_name,XY(:,:,xy_index),xy_index); 
+      sstr = sweep_along_curve(this,this.type,xy(:,:,ii),ii); 
       gmsh = w_(gmsh,'%s\n',sstr);
       
       vol_tag = 'su[0]';
-    elseif isfield(this,'compound_f')      && ...
-            ischar(this.compound_f)        && ...
-            strcmp(this.compound_f,'auto') 
+    elseif isfield(object,'compound_f')      && ...
+            ischar(object.compound_f)        && ...
+            strcmp(object.compound_f,'auto') 
           
-      if test_fascicle_closeness(splines, this, xy_index)
-        sstr = build_compound_structure(splines,this, this_name,XY,xy_index); 
+      if test_fascicle_closeness(this, object, ii)
+        sstr = build_compound_structure(this,object,this.type,xy,ii); 
         gmsh = w_(gmsh,'%s\n',sstr);
       else
-        sstr = default_linear_extrude(splines, this_name, XY, xy_index); 
+        sstr = default_linear_extrude(this, this.type, xy, ii); 
         gmsh = w_(gmsh,'%s\n',sstr);
       end
 
-    elseif isfield(this,'compound_f')      
-      if any([this.compound_f{:}] == xy_index)
-           sstr = build_compound_structure(splines,this,this_name,XY,xy_index); 
-      else sstr = default_linear_extrude(splines, this_name, XY, xy_index); 
+    elseif isfield(object,'compound_f')      
+      if any([object.compound_f{:}] == ii)
+           sstr = build_compound_structure(this,object,this.type,xy,ii); 
+      else sstr = default_linear_extrude(this, this.type, xy, ii); 
       end
       gmsh = w_(gmsh,'%s\n',sstr);
       
     else % Default : linear extrusion
-      
-      sstr = default_linear_extrude(splines, this_name, XY, xy_index); 
+      sstr = default_linear_extrude(this, this.type, xy, ii); 
       gmsh = w_(gmsh,'%s\n',sstr);
     end
     
-    
-    
-    gmsh = w_(gmsh,'BooleanDifference{ Volume{vol_id}; Delete; }{ Volume{%s}; }',vol_tag); % subtract fascicle from interstitial volume
-    is_member = unique(is_member(is_member>0)) - 1;
+    myID = numel(cross_section);
+    gmsh = w_(gmsh,'ne%02d = %s;', myID, vol_tag);
+    gmsh = w_(gmsh,['BooleanDifference{ Volume{vol_id}; Delete; }' ... 
+                                     '{ Volume{%s}; }'],vol_tag); 
+    is_member = unique(is_member(is_member>0));
+    % if isfield(object,'intersections') select and append to ismember 
     for pp = 1:numel(is_member)            
-        gmsh = w_(gmsh,'BooleanDifference{ Volume{f_id+%d}; Delete; }{ Volume{%s}; }', ...
-                        is_member(pp), vol_tag); 
+        gmsh = w_(gmsh,['BooleanDifference{ Volume{ne%02d}; Delete; }' ... 
+                                         '{ Volume{%s}; }'], ... 
+                                            is_member(pp), vol_tag); 
     end
-    if this.DoSurface
-        gmsh = w_(gmsh,'Physical Surface("P_%s%d") = {su[2]};', this_name, xy_index);
+    if object.DoSurface
+        gmsh = w_(gmsh,'Physical Surface("P_%s%d") = {su[2]};', this.type, ii);
     end
     
-    gmsh = w_(gmsh,'Physical Volume("%s%d") = {%s};\n', this_name, xy_index, vol_tag );
+    gmsh = w_(gmsh,'Physical Volume("%s%d") = {%s};\n', this.type, ii, vol_tag );
 end
 
 return
@@ -875,14 +905,14 @@ gmsh = w_(gmsh,'Printf("Extrude SU = %%g",su[0]) ;');
 
 return
 
-function gmsh = default_linear_extrude(splines, this_name, XY, xy_index) 
+function gmsh = default_linear_extrude(splines, name, XY, xy_index) 
 
   gmsh = '';
   w_ = @(g,f,varargin) sprintf(['%s\n' f],g,varargin{:});
 
   sstr = '';     
-  gmsh = w_(gmsh,'// %s_%02d\np = newp;',this_name,xy_index);
-  for pp = 1:size(XY,2)-1 % last point is duplicate
+  gmsh = w_(gmsh,'// %s_%02d\np = newp;',name,xy_index);
+  for pp = 1:size(XY,2)-1 % last point is duplicate 
       gmsh = w_(gmsh, 'Point(p+%d) = {%0.1f,%0.6f,%0.6f, lc} ;', ...
                                 pp-1, -splines.z, XY(2,pp,xy_index), ...
                                                   XY(1,pp,xy_index));
@@ -890,7 +920,7 @@ function gmsh = default_linear_extrude(splines, this_name, XY, xy_index)
   end
   sstr = strrep(sstr,'p+0,','p');
 
-  gmsh = w_(gmsh,'Printf("Spline %s_%02d : %%g - %%g", p, p+%d) ;',this_name,xy_index,pp-1);
+  gmsh = w_(gmsh,'Printf("Spline %s_%02d : %%g - %%g", p, p+%d) ;',name,xy_index,pp-1);
   gmsh = w_(gmsh,'\ne = newreg;\nSpline(e) = {p,%s} ;',sstr);
   gmsh = w_(gmsh,'Curve Loop(e+1) = {e} ;');
   gmsh = w_(gmsh,'Plane Surface(e+2) = e+1 ;');
@@ -912,7 +942,7 @@ do_merge = any(min_dist < info.resol);
 
 return
 
-function gmsh = build_compound_structure(splines,info,this_name,~,xy_id) 
+function gmsh = build_compound_structure(splines,info,name,~,xy_id) 
 
 persistent compound_structure
 if ischar(splines) && strcmp(splines,'reset')
@@ -935,7 +965,7 @@ if isempty(this)
   splines.coeffs(:,end,:) = []; % remove duplicate endpoint
 
   this = struct;
-  this.obj = this_name;
+  this.obj = name;
 
   nF = size(splines.coeffs,3);  
 
@@ -1205,7 +1235,7 @@ if isempty(this)
   else compound_structure(end+1) = this;
   end
   
-  fprintf('Treating %s ids # %s%c as compound structure\n', this_name, ...
+  fprintf('Treating %s ids # %s%c as compound structure\n', name, ...
                     sprintf('%d,',this.ids), 8);
 
   clear cs_id rr r2 ans c1 c2 coe coe2 f1 f2 inc nF nP omo ord px 
@@ -1221,7 +1251,7 @@ if ~this.s_written
   %% write: corner points, boundary splines
   
   sstr = ''; 
-  gmsh = w_(gmsh,'//Compound %s\np = newp;',this_name);
+  gmsh = w_(gmsh,'//Compound %s\np = newp;',name);
   for pp = 1:numel(this.p_gmsh_ids)    
     gmsh = w_(gmsh,'%s=p+%d;',this.p_gmsh_ids{pp},pp-1);    
   end
@@ -1235,7 +1265,7 @@ if ~this.s_written
   for ss = 1:numel(this.s_gmsh_ids)
   
     sstr = ''; 
-    gmsh = w_(gmsh,'\n// for %s_%s\np = newp;',this_name,this.s_gmsh_ids{ss});
+    gmsh = w_(gmsh,'\n// for %s_%s\np = newp;',name,this.s_gmsh_ids{ss});
 
     for pp = 1:size(this.splines{ss},2) % last point is duplicate
         gmsh = w_(gmsh, 'Point(p+%d) = {%0.1f,%0.8f,%0.8f, lc} ;', ...
@@ -1245,7 +1275,7 @@ if ~this.s_written
     sstr = strrep(sstr,',p+0','p');
 
     gmsh = w_(gmsh,'\nPrintf("Spline %s_%s : %%g - %%g", p, p+%d) ;', ...
-                              this_name,this.s_gmsh_ids{ss},pp-1);
+                              name,this.s_gmsh_ids{ss},pp-1);
     gmsh = w_(gmsh,'%s = newreg;\nSpline(%s) = {%s,%s,%s} ;', ...
                 this.s_gmsh_ids{[ss ss]}, ...   
                 this.p_gmsh_ids{this.s_corner(ss,1)},  sstr, ...
@@ -1259,7 +1289,7 @@ end
 
 sstr = sprintf(',%s',this.s_gmsh_ids{this.s_order{xy_id}});
 
-gmsh = w_(gmsh,'\nPrintf("Loop %s_%02d : { %s }") ;', this_name, ... 
+gmsh = w_(gmsh,'\nPrintf("Loop %s_%02d : { %s }") ;', name, ... 
                                                 xy_id, sstr(2:end));
 gmsh = w_(gmsh,'e = newreg;\n Curve Loop(e) = {%s} ;', sstr(2:end));
 gmsh = w_(gmsh,'Plane Surface(e+1) = e ;');

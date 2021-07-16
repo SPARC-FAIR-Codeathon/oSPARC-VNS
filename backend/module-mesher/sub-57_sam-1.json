@@ -3,8 +3,8 @@
 
 { "nerve": {
     "file": "./sub-57_sam-1.xml",    
-    // translate nerve from XML
-    "xMove":[-1220,-765]
+    "xMove":[-1220,-700],
+    "meshList":["Fascicle","Epineurium"]
   },
 }
 

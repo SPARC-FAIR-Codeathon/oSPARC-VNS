@@ -25,24 +25,19 @@ nerve_mesh(tools.file('input~/demo/payne2019-cuff.json'), '', ...
            tools.file('input~/demo/payne2019-nerve.json'))
 
        
-%% EXAMPLE (3)
+%% EXAMPLE (3) - human vagus with epineurium
 
-human_vagus = tools.parse_json( tools.file('get','*.json') );
+array = tools.parse_json( 'C-FINE.json' );
+human_vagus = tools.parse_json( tools.file('get','sub*.json') );
 mesh.insert_gmsh_fascicles('-setup',human_vagus)
-nerve = plots.preview_fascicles;
 
-array = tools.parse_json('./input/demo/payne2019-cuff.json');
-
-hold on, plot([1 -1 -1 1 1]*array.array.carrier.cuff_IDx/0.002, ...
-              [1 1 -1 -1 1]*array.array.carrier.cuff_IDy/0.002, 'k-', ...
-              'LineWidth', 1.5)
-          
+% s = mesh.insert_gmsh_fascicles;
+nerve = plots.preview_fascicles('-no-warn','-array',array.array);
 
 %%
 
 tools.file('root',pwd)
-nerve_mesh(tools.file('input~/demo/payne2019-cuff.json'), ...
-                        human_vagus_sample)
+nerve_mesh('C-FINE.json', '', tools.file('get','sub*.json'))
 
 
            

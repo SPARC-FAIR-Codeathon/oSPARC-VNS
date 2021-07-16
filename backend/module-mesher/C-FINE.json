@@ -1,0 +1,30 @@
+
+// Example JSON input file specifying electrode array - 14 July 2021
+
+{ "array": {
+    "Name": "C-FINE",
+    "DOI":"10.1088/1741-2552/aa6632",
+    "Template": "~/input/cuff",
+    "ElectrodePositions": [[0,0,3.88],[0,0,-2.77],
+                           [0,0,1.66],[0,0,-0.55], 
+                           [0,0,-0.55],[0,0,1.66], 
+                           [0,0,-2.77],[0,0,3.88]], 
+    "ElectrodeDimensions": [1.0 0.05 2.3],
+    "ElectrodeTypeIndex": [1,1,1,1,1,1,1,1],     
+    "ElectrodeAngle":[0,180,0,180,0,180,0,180],
+    "InsetDepth":0.02, 
+    "carrier":{ 
+        "cuff_IDy" : 1.0, 
+        "cuff_IDx" : 10.0,
+        "cuff_IDr" : 0.2,
+        "cuff_length" : 7.0
+    }
+  }, 
+  "mesh": {
+    "MeshLengthMax": 0.2,
+    "DomainSize":[12,12,6], // mm
+  }
+}
+
+
+
