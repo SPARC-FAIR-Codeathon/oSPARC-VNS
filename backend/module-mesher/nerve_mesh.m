@@ -273,6 +273,7 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
   path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
 
   if any(named('-preview-geo')), 
+      m = PN_mesh('.geo'); 
      system(sprintf('"%s" "%s" &',path_to_gmsh,PN_mesh('.geo')));
      return
   end

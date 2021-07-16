@@ -4,7 +4,9 @@
 { "nerve": {
     "file": "./sub-57_sam-1.xml",    
     "xMove":[-1220,-700],
-    "meshList":["Fascicle","Epineurium"]
+    "meshList":["Fascicle","Epineurium"],
+    "MeshLengthFascicle":0.1,
+    "zRange":12
   },
 }
 
