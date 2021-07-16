@@ -17,6 +17,7 @@ else error('unknown filetype on file "%s", expected {.mat, .xml}', ...
                                      file)
 end
 
+disp('measuring perineurium thickness ... ')
 
 if isfield(data,'outline') && iscell(data.outline)
   
@@ -34,15 +35,22 @@ elseif isfield(data,'Children') % most likely XML
     profiles = the(data,'contour');
     names = arrayfun(@(p) attr_(p,'Name'),profiles,'unif',0);     
     fasc_idx = str2double(regexp(names,'(?<=ior-)\d+','match','once'));
+    if all(isnan(fasc_idx)) % not enumerated in XML        
+      fasc_idx = arrayfun(@(u) sum(strcmp(names(1:u),names{u})), 1:numel(names));         
+    elseif any(isnan(fasc_idx))
+      fasc_idx(isnan(fasc_idx)) = 0; 
+    end
     widths = zeros(max(fasc_idx),1);
     
     for ff = 1:max(fasc_idx)
         
-        sel = (fasc_idx == ff); 
-        
+        sel = (fasc_idx == ff) & ~contains(names,'Blood');         
         xy_fasc = profiles(sel & contains(names,'Interior'));
         xy_peri = profiles(sel & contains(names,'Exterior'));
-        
+        if numel(xy_fasc) ~= 1 || numel(xy_peri) ~= 1
+          xy_fasc = profiles(sel & contains(names,'Inner'));
+          xy_peri = profiles(sel & contains(names,'Outer'));
+        end
         if numel(xy_fasc) ~= 1 || numel(xy_peri) ~= 1
           warning('Fascicle #%d: found %d interior, %d exterior loops', ...
                              ff, numel(xy_fasc), numel(xy_peri))

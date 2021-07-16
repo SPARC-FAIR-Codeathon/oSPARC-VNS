@@ -106,8 +106,7 @@ if any(request('axon'))
     
     if any(named('-anat')), axon_data.nerve = get_('-anat'); end
     if ~isfield(axon_data,'nerve') % older axons files might not have this embedded
-      f_list = dir(tools.file('~/source/fascicles/*.splines.dat'));
-      axon_data.nerve = mesh.read_dat_file(tools.INPUT_file(f_list, f_(axon_file)));
+      error nerve_missing_in_axon_data      
     end
        
     if any(named('-delta-xy'))
@@ -151,7 +150,8 @@ if any(request('fascicle')) % just the fascicle requested, not finalised
 
   if ~F_is_embedded % older axons files might not have this embedded
     f_list = dir(tools.file('~/source/fascicles/*.splines.dat'));
-    nerve = mesh.read_dat_file(tools.INPUT_file(f_list, f_(axon_file)));
+    error missing_embedded_nerve_anatomy
+    
     
     if exist('axon_data','var'), varargout{end}.nerve = nerve;
     else
@@ -251,7 +251,8 @@ if any(request('wave'))
       
       f = dir(tools.file('sub~\eidors\sensitivity*.mat'));
       if any(named('-eidors-file')), eidors_file = get_('-eidors-file');
-      else eidors_file = tools.INPUT_file(f, wave_folder);  
+      else % eidors_file = tools.INPUT_file(f, wave_folder);  
+          error('Please specify -eidors-file')
       end
       
       if opts.do_LOAD, announce_load_(eidors_file)
@@ -266,17 +267,16 @@ if any(request('wave'))
       if any(named('-root')), axons_folder = get_('-root'); end  
       if any(request('root')), varargout = [varargout {axons_folder}]; end
             
-      if any(named('-ax')), 
+      if any(named('-ax'))
         axon_file = get_('-ax');
-        if any(axon_file == '?'), 
+        if any(axon_file == '?')
           [af.name,af.folder] = uigetfile('axons*.mat',[],axons_folder);     
            axon_file = f_(af);
         end
 
-      else % use defaults (tools.INPUT_file)
-        axon_file = dir([axons_folder filesep '*.mat']);  
-        if isempty(axon_file), error('please run models.axon_poplation'), end
-        axon_file = tools.INPUT_file(axon_file, eidors_file);
+      else
+        axon_file = tools.file('get',[axons_folder filesep '*.mat']);         
+        if isempty(axon_file), error('please run models.axon_poplation'), end        
       end
 
       if opts.do_LOAD, announce_load_(axon_file)
@@ -284,11 +284,8 @@ if any(request('wave'))
          varargout{end} = EM; % overwrite, assuming position
          
          if isfield(EM.axons,'nerve')
-           nerve = EM.axons.nerve;
-         else
-           f = dir(tools.file('~/source/fascicles/*.splines.dat')); 
-           spline_file = tools.INPUT_file(f, axons_file);
-           nerve = read_dat_file(spline_file,'index',EM.info.SplineIndex);           
+              nerve = EM.axons.nerve;
+         else error missing_embedded_nerve_profile
          end
          
          if any(named('-delta-xy'))
@@ -303,9 +300,6 @@ if any(request('wave'))
          end
            varargout = [varargout {nerve}];
       else varargout = [varargout {axon_file}];
-           f = dir(tools.file('~/source/fascicles/*.splines.dat')); 
-           spline_file = tools.INPUT_file(f, axon_file);
-           varargout = [varargout {spline_file}];
       end
     end
   end  

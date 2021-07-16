@@ -1,0 +1,52 @@
+
+// Default conductivity values (14 July 2021)
+
+{ "sigma": [{
+	"name": "Interstitial",
+	"value": 0.66, 
+	"unit": "S/m", 
+	"reference": "link.springer.com/article/10.1007/BF02474537"
+  },{
+	"name": "Prostate",
+	"value": 0.4243, 
+	"unit": "S/m", 
+	"reference": "doi:10.1109/TBME.2007.897331"
+  },{
+	"name": "PDMS",
+	"value": 1e-12, 
+	"unit": "S/m", 
+	"reference": ""
+  },{
+	"name": "Fascicle",
+	"value": [0.570, 0.088, 0.088], 
+	"unit": "S/m", 
+	"reference": "Ranck (1965)"
+  },{
+	"name": "P_Fascicle",
+	"value": 8.7e-4, 
+	"unit": "S/m", 
+	"reference": "PMID30507555"
+  },{
+	"name": "Endoneurium",
+	"value": [0.570, 0.088, 0.088], 
+	"unit": "S/m", 
+	"reference": "Ranck (1965)"
+  },,{
+	"name": "Epineurium",
+	"value": 0.15873, 
+	"unit": "S/m", 
+	"reference": "doi:10.1088/1741-2552/aaeb0c"
+  },{
+	"name": "Blood",
+	"value": 1.09, 
+	"unit": "S/m", 
+	"reference": "pmc2914348"
+  }],  
+ "old-values":[{
+	"name": "Epineurium",
+	"value": 0.083, 
+	"unit": "S/m", 
+	"reference": "PMID14278100"
+ }]
+}
+

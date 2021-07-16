@@ -29,9 +29,10 @@ if isempty(cachepath)
     if isempty(which('getpid')), pid = feature('getpid');
     else                         pid = getpid; 
     end  
-        
-    cachepath = tools.configuration('cache'); 
+
+    cachepath = 'mdl-VNS-%d'; 
     cachepath = [tempdir sprintf(cachepath,pid)];
+    if ~exist(cachepath,'dir'), mkdir(cachepath); end
     
     % if isempty(t),
     % elseif nargin > 1, cachepath = newpath; end
