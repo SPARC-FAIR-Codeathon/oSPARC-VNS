@@ -251,10 +251,15 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
   make_opts = {'-usev','-output',PN_mesh('.geo'), ...
                  'virtual_thinlayer','exterior_len',e.mesh.MeshLengthMax};
   
-  if any(named('-make-o'))    
+  if any(named('-make-o'))
     more_opts = get_('-make-o');
     if ~iscell(more_opts), more_opts = {more_opts}; end
-    make_opts = [make_opts more_opts];
+    make_opts = [make_opts more_opts];  
+  end
+  
+  if isfield(e,'array') && isfield(e.array,'carrier')
+    more_opts = tools.opts_to_args({e.array},'carrier','--s2a-keep');
+    make_opts = [make_opts more_opts];  
   end
   
   if ~exist(PN_mesh('.geo'),'file')
@@ -263,13 +268,18 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
                  'Using existing .geo file (%s). %s', PN_mesh('.geo'), ...
                  'If this is not intended, call tools.cache(''reset'')')
   end
-  
-  if isdeployed, disp('Progress: 10%'), end
 
+  if isdeployed, disp('Progress: 10%'), end
+  path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
+
+  if any(named('-preview-geo')), 
+      m = PN_mesh('.geo'); 
+     system(sprintf('"%s" "%s" &',path_to_gmsh,PN_mesh('.geo')));
+     return
+  end
   
   % use gmsh.exe to convert the .geo file to a .msh file:
   if ~exist(PN_mesh('.msh'),'file')  
-    path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
     system(sprintf('"%s" "%s" -3',path_to_gmsh,PN_mesh('.geo'))); 
   end
 
