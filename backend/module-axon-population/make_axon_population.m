@@ -64,8 +64,8 @@ nerve = mesh.insert_gmsh_fascicles('-info','-check-units');
 
 if isdeployed, disp('Progress: 15%'), end
 
-arguments = {'-anat',nerve,'-out', ... 
-              tools.file('get','./output/axon-population (%d).mat','next')}; 
+output_file = tools.file('get','./output/axon-population (%d).mat','next');
+arguments = {'-anat',nerve,'-out', output_file}; 
 
 while 1
   if nargin < 4, break, end 
@@ -100,10 +100,17 @@ if any(named('-:')), arguments = [arguments ...
                                   varargin(find(named('-:'))+1:end)]; 
 end
 axon_population('-pregenerated',ax.axon_populations,arguments{:});
-                          
+
+if isdeployed, disp('Progress: 90%'), end
+
+pause(0.05)
+if ishandle(2), print(2,strrep(output_file,'.mat','.svg'),'-dsvg'), end
+pause(0.05), close all
+
 if isdeployed, disp('Progress: 100%'), end
 
 toc(t)
+
 
 return
 
@@ -604,7 +611,7 @@ if max(abs(pop.fibre_xy(:))) > 10 && ~any(named('-units-no-c'))
   pop.fibre_xy = pop.fibre_xy / 1e3;
   pop.unmyelinated_xy = pop.unmyelinated_xy / 1e3;
     warning('ViNERS:make_axon_population:outputUnits', ...
-            'Converting output units from µm to mm.')
+            'Converting output units from ï¿½m to mm.')
 end
 
 if any(named('-mat-legacy'))
@@ -1316,7 +1323,7 @@ while true % might need multiple passes
       xy = [cellfun(@(p) nanmedian(cp(p,1)), vp) ...
             cellfun(@(p) nanmedian(cp(p,2)), vp)];
 
-      if isdeployed, fprintf('Progress: %0.1f%%', 15 + (lloyd_relax/3)*70), end
+      if isdeployed, fprintf('Progress: %0.1f%%\n', 15 + (lloyd_relax/3)*70), end
       % h.XData = xy(:,1); h.YData = xy(:,2);
   end
 
@@ -1679,7 +1686,7 @@ else  x = 36;
 end
 [y,x] = hist(pop.fibre_diam,x); %#ok<*HIST>
 bar(x,y/sum(y),1,bar_style{:})
-tools.tidyPlot, xlabel('fibre diameter (µm)')
+tools.tidyPlot, xlabel('fibre diameter (ï¿½m)')
 
 subplot(3,3,6), hold on
 
@@ -1693,7 +1700,7 @@ end
 [y,x] = hist(pop.fibre_axon,x); 
 bar(x,y/sum(y),1,bar_style{:})     
 
-tools.tidyPlot, xlabel('axon diameter (µm)')
+tools.tidyPlot, xlabel('axon diameter (ï¿½m)')
 
 subplot(3,3,9), hold on
 if D.index(1) > 0, v = var_(1); 
@@ -1709,7 +1716,7 @@ elseif numel(D.index) > 4 && D.index(5) > 0, v = var_(5);
   bar(v.x,v.y,1,'FaceColor',[.7 .7 .7],'EdgeColor','none')    
   y = hist(pop.fibre_diam - pop.fibre_axon,v.x); 
   bar(v.x,y/sum(y),1,bar_style{:})
-  tools.tidyPlot, xlabel('sheath width (µm)')
+  tools.tidyPlot, xlabel('sheath width (ï¿½m)')
 end
 
 return
