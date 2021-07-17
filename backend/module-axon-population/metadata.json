@@ -1,0 +1,78 @@
+
+{"Service":{
+	"Title":"Axon population generator",
+	"Author":{
+		"Name":"Calvin Eiber",
+		"Email":"ceiber@unimelb.edu.au",
+	    "Affiliation":"University of Melbourne",
+	}, 
+	"Description":"This generates an axon population for simulation which is distributed within the specified nerve geometry",
+	"CLI":"generate_axon_population axons.mat nerve.xml nerve.json units nMyelinated nUnmyelinated AE_ratio",
+	"URL":"https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/tree/main/backend/module-axon-population",
+	"Language":"MATLAB",
+	"Inputs":[{
+		"Name":"axons.mat",
+		"Type":".mat file",
+		"Label":"Source axon populaton",
+		"Default":"rat-pelvic-nerve",
+		"Units":"µm",
+		"Description":"Source axon population. The output axons will be sampled from the supplied file."
+	},{
+		"Name":"nerve.xml",
+		"Type":"MBF-xml file",
+		"Label":"Nerve tracing",
+		"Default":"./inputs/demo/*.xml",
+		"Units":"mm",
+		"Description":"(as input #2, mesher module)"
+	},{
+		"Name":"nerve.json",
+		"Type":".json file",
+		"Label":"Nerve tracing composition",
+		"Default":"./inputs/demo/*.json",
+		"Units":"n/a",
+		"Description":"(as input #3, mesher module)"
+	},{
+		"Name":"units",
+		"Type":"enum {string}",
+		"Label":"axon count units",
+		"Default":"per_mm2",
+		"Units":"n/a",
+		"Description":"one of {'per_mm2' | 'count' | 'ignore'}, how are the specified axon counts interpreted? (count could also be labelled per_nerve in the dropdown)"
+	},{
+		"Name":"file.mat",
+		"Type":".mat file",
+		"Label":"EIDORS mesh",
+		"Default":"29140",
+		"Units":"axons / unit",
+		"Description":""
+	},{
+		"Name":"nUnmyelinated",
+		"Type":"double",
+		"Label":"EIDORS mesh",
+		"Default":"./inputs/demo/*.mat",
+		"Units":"axons / unit",
+		"Description":""
+	},{
+		"Name":"AE_ratio",
+		"Type":"double",
+		"Label":"Afferent/Efferent ratio",
+		"Default":"4.0",
+		"Units":"unitless",
+		"Description":"Ratio of sensory (afferent) to motor (efferent) axons in the generated population. The same ratio is used for both myelinated and unmyelinated axons."
+	}], 
+	"Outputs":[{
+		"Name":"axon-population.mat",
+		"Type":".mat file",
+		"Label":"generated axon population",
+		"Default":"./outputs/axon-population (1).mat",
+		"Units":"",
+		"Description":"synthetic axon population for the input nerve and axons set"
+	},{
+		"Name":"axon-population.svg",
+		"Type":".svg graphic",
+		"Label":"visualisation of generated axon population",
+		"Default":"./outputs/axon-population (1).svg",
+		"Units":"",
+		"Description":"synthetic axon population for the input nerve and axons set"
+	}]
+}}

@@ -167,8 +167,8 @@ if any(named('-xy')) && numel(electrode_list) > 1
   tools.tidyPlot, axis equal square, hold on
   plot(xlim,xlim,'Color',[0 0 0 0.3])
 
-  xlabel([ax(idx(1)).YLabel.String ' Peak (µV/µA)'])
-  ylabel([ax(idx(2)).YLabel.String ' Peak (µV/µA)'])
+  xlabel([ax(idx(1)).YLabel.String ' Peak (ï¿½V/ï¿½A)'])
+  ylabel([ax(idx(2)).YLabel.String ' Peak (ï¿½V/ï¿½A)'])
   
 end
 
@@ -216,7 +216,8 @@ function array_geometry_figure(EM)
     
   if isfield(EM.info,'FascicleTrajectory')    
       alist = dir(tools.file('in~\axons\*.mat'));    
-      load(tools.INPUT_file(alist,file),'F');
+      error get_fascicle_Trajectory_anatomy
+      % load(tools.INPUT_file(alist,file),'F');
       
       xy = mean(F.fascicles); 
       xyz = tools.from_trajectory(EM,F,xy);
@@ -251,7 +252,7 @@ function array_geometry_figure(EM)
   set(gca,'DataAspectRatio',y_gscale./min(y_gscale))
   axis tight, tools.tidyPlot
   xlabel('Distance in space, mm')
-  ylabel('Sensitivity, µV/µA')
+  ylabel('Sensitivity, ï¿½V/ï¿½A')
   [~,lbl] = fileparts(EM.filename);
   title(strrep(lbl,'_','\_'))
 
@@ -521,7 +522,7 @@ nY = size(coeff,2);
 
 if nY == numel(hobj.Children)
      labels = arrayfun(@(n) sprintf('PCA-%d (au)',n), 1:nY,'unif',0);   
-elseif nY == 2, labels = {'Peak, µV/µA','Half-width, mm'};
+elseif nY == 2, labels = {'Peak, ï¿½V/ï¿½A','Half-width, mm'};
 else labels = arrayfun(@(n) sprintf('y%d (?)',n), 1:nY,'unif',0);
 end
 
@@ -613,7 +614,8 @@ for ee = 1:nE
       if isfield(EM.info,'FascicleTrajectory')
       
         alist = dir(tools.file('in~\axons\*.mat'));
-        load(tools.INPUT_file(alist,EM.filename),'F');
+        error get_FascicleTrajectory
+        % load(tools.INPUT_file(alist,EM.filename),'F');
         
         xyf = F.outline(:,:,ff);
         outline{ff} = F.outline(:,:,ff);
@@ -765,7 +767,7 @@ for ee = 1:nE
   else ylabel(sprintf('\\bfE%d',opts.electrode(ee)))  
   end
   
-  if ee == 1, title('Peak (µV/µA)'), end
+  if ee == 1, title('Peak (ï¿½V/ï¿½A)'), end
 
   if ~opts.do_hwidth, pause(0.02), continue, end
   

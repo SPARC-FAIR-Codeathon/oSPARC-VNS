@@ -53,7 +53,7 @@ end
 tools.file('root',pwd); % set 'root' to this folder
 
 if isdeployed
-  if exist(default_file,'file')
+  if exist(array_file,'file')
        printf('Found array description file: %s\n', array_file)
   else printf('Failed to find array description file: %s\n', array_file)
   end
@@ -99,6 +99,7 @@ end
 %% Core code
 
 t = tic; 
+if isdeployed, disp('Progress: 3%'), end
 
 mesh.insert_gmsh_fascicles('-setup',opts);
 if ~isfield(opts.nerve,'Perineurium_um')
@@ -114,7 +115,7 @@ if isdeployed, debug_path_config_for_oSPARC, end
 
 if ~any(named('-r')), tools.cache('reset'), end
 
-if any(named('-a')), CLI_args = varargin(find(named('-a'))+1:end); 
+if any(named('-:')), CLI_args = varargin(find(named('-:'))+1:end); 
 else CLI_args = {}; 
 end
 
@@ -138,8 +139,6 @@ fprintf('  tools.configuration(''noload'') = \n')
 d = tools.configuration('noload'); 
 disp(d)
 fprintf('  tools.cache = "%s"\n', tools.cache);
-
-
 fprintf(' ***************************************/ \n');
 
 
@@ -194,7 +193,10 @@ if ~isempty(output_name) && isempty(regexp(output_name,'\.mat$','once'))
     printf('\nGenerating %s', tools.file('T', output_name))
 end
 
-tools.setupEIDORS;
+printf('try tools.setupEIDORS');
+tools.setupEIDORS; % if ~isdeployed, tools.setupEIDORS; end
+
+if isdeployed, disp('Progress: 6%'), end
 
 %% Generate requested mesh
 if any(named('-fix-m')), m = old_eidors_file.model;
@@ -212,6 +214,9 @@ end
 printf('\nSaving %s ...', tools.file('T', output_name))
 save(output_name,'-struct','m')
 printf('Done!\n')
+
+if isdeployed, disp('Progress: 100%'), end
+
 
 return
 
@@ -246,10 +251,15 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
   make_opts = {'-usev','-output',PN_mesh('.geo'), ...
                  'virtual_thinlayer','exterior_len',e.mesh.MeshLengthMax};
   
-  if any(named('-make-o'))    
+  if any(named('-make-o'))
     more_opts = get_('-make-o');
     if ~iscell(more_opts), more_opts = {more_opts}; end
-    make_opts = [make_opts more_opts];
+    make_opts = [make_opts more_opts];  
+  end
+  
+  if isfield(e,'array') && isfield(e.array,'carrier')
+    more_opts = tools.opts_to_args({e.array},'carrier','--s2a-keep');
+    make_opts = [make_opts more_opts];  
   end
   
   if ~exist(PN_mesh('.geo'),'file')
@@ -258,13 +268,23 @@ if any(named('-regenerate')) || ~exist(PN_mesh('-thin.msh.mat'),'file')
                  'Using existing .geo file (%s). %s', PN_mesh('.geo'), ...
                  'If this is not intended, call tools.cache(''reset'')')
   end
+
+  if isdeployed, disp('Progress: 10%'), end
+  path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
+
+  if any(named('-preview-geo')), 
+      m = PN_mesh('.geo'); 
+     system(sprintf('"%s" "%s" &',path_to_gmsh,PN_mesh('.geo')));
+     return
+  end
   
   % use gmsh.exe to convert the .geo file to a .msh file:
   if ~exist(PN_mesh('.msh'),'file')  
-    path_to_gmsh = tools.configuration('gmsh'); % 'C:\Program Files\gmesh\gmsh.exe';
     system(sprintf('"%s" "%s" -3',path_to_gmsh,PN_mesh('.geo'))); 
   end
 
+  if isdeployed, disp('Progress: 30%'), end
+  
   if ~exist(PN_mesh('.msh'),'file')
     % winopen(PN_mesh('.geo'))
     error('Pipeline crashed during mesh generation')
