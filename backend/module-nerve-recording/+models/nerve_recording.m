@@ -465,8 +465,8 @@ for i_rep = 1:n_rep
     
     if any(named('-out')), wave_path = get_('-out');
       if any(wave_path == '~'), wave_path = tools.file(wave_path); end
-      if ~any(ismember('\/',wave_path)), % put in ~waves/
-        if any(ismember('()',wave_path)), % cat settings.wave_path 
+      if ~any(ismember('\/',wave_path)) % put in ~waves/
+        if any(ismember('()',wave_path)) % cat settings.wave_path 
           wave_path = [settings.wave_path ' ' wave_path];  %#ok<AGROW>
         end
         wave_path = [tools.file('waves~/') wave_path ]; %#ok<AGROW>
@@ -487,8 +487,8 @@ for i_rep = 1:n_rep
     file_out = tools.file('get',[wave_path strrep(file_out,'.0_','_')],'next'); 
 
     if ~exist(fileparts(file_out),'dir'), mkdir(fileparts(file_out)),
-    elseif check_folder      
-      
+      check_folder = false; 
+    elseif check_folder
       
       if any(named('-clf'))
           warning('ViNERS:overwriteFolder','erasing the pre-existing directory %s', tools.file('T',wave_path))
@@ -509,7 +509,8 @@ for i_rep = 1:n_rep
     inputs = varargin;    
     raster = [raster{:}]; 
     
-    printf('Saving %s\n', tools.file('TT',file_out))
+    % printf('Saving %s\n', tools.file('TT',file_out))
+    printf('Saving %s\n', tools.file('T',file_out))
     save(file_out, 'raster','waves','time','inputs','options')
 
    end % i_rate
@@ -531,9 +532,9 @@ opts = struct;
 
 if any(named('-settings')), opts = get_('-settings'); return, end
 
-opts(1).name = 'default';
+opts(1).name = 'flat';
 opts(1).n_reps = 3;
-opts(1).coherence = [0.2 0.5 1 2 5];
+opts(1).coherence = 1;
 opts(1).spikerate = [0.1; 1; 10];
 opts(1).frequency = 1;
 opts(1).exponent = 3; 
@@ -542,43 +543,22 @@ opts(1).file_scheme = 'epoch_k%0.1f_c%0.1f (%%d).mat';
 opts(1).file_vector = @(ex,sr,fr,ch) [sr(1) ch]; 
 
 opts(2) = opts(1); 
-opts(2).name = 'base';
-opts(2).n_reps = 10; 
-opts(2).spikerate = 0.1; 
+opts(2).name = 'drift'; 
+opts(2).frequency = [1 1 1];
+opts(2).spikerate = [0.1 1; 1 5; 1 10; 1 20; 3 4];
+opts(2).exponent  = [1 5 20];  
 opts(2).coherence = [0.3 1 3]; 
-opts(2).wave_path = 'base';
-opts(2).file_scheme = 'epoch_b%0.1f_c%0.1f (%%d).mat';
-
-opts(3) = opts(1); 
-opts(3).name = 'drift'; 
-opts(3).frequency = [1 1 1];
-opts(3).spikerate = [0.1 1; 1 5; 1 10; 1 20; 3 4];
-opts(3).exponent  = [1 5 20];  
-opts(3).coherence = [0.3 1 3]; 
-opts(3).wave_path = 'drift'; 
-opts(3).file_scheme = 'epoch_b%0.1f_k%0.1f_c%0.1f_w%0.0f (%%d).mat';
-opts(3).file_vector = @(ex,sr,fr,ch) [sr(1:2) ch ex]; 
+opts(2).wave_path = 'drift'; 
+opts(2).file_scheme = 'epoch_b%0.1f_k%0.1f_c%0.1f_w%0.0f (%%d).mat';
+opts(2).file_vector = @(ex,sr,fr,ch) [sr(1:2) ch ex]; 
 
 opts(4) = opts(1); 
-opts(4).name = 'pulse';
-opts(4).coherence = [0.3 1 3]; 
-opts(4).spikerate = [1 1.6 2.5 4 6.3 10 16 25 40 63 100]'; 
-opts(4).wave_path = 'pulse'; 
-opts(4).file_scheme = 'epoch_k%0.1f_c%0.1f (%%d).mat';
-
-opts(5) = opts(1); 
-opts(5).name = 'burst';
-opts(5).frequency = [100 50 20 10];
-opts(5).spikerate = [.1 3; 0.75 1.5; 1 1; 1 30; 7.5 15; 10 10 ]; 
-opts(5).exponent  =  ones(size(opts.spikerate)); 
-opts(5).wave_path = 'burst'; 
-opts(5).file_scheme = 'epoch_k%0.1f_f%0.1f_c%0.1f (%%d).mat';
-opts(5).file_vector = @(ex,sr,fr,ch) [sr(2) fr ch]; 
-
-opts(7) = opts(1); 
-opts(7).name = 'flat';
-opts(7).coherence = [0.3 1 3]; 
-opts(7).spikerate = [0.1 0.2 0.5 1 2 5 10 20]';
+opts(4).name = 'burst';
+opts(4).frequency = [100 50 20 10];
+opts(4).spikerate =  [.1 3; 0.75 1.5; 1 1; 1 30; 7.5 15; 10 10 ]; 
+opts(4).wave_path = 'burst'; 
+opts(4).file_scheme = 'epoch_k%0.1f_f%0.1f_c%0.1f (%%d).mat';
+opts(4).file_vector = @(ex,sr,fr,ch) [sr(2) fr ch]; 
 
 for x = 1:numel(opts)  
   if any(named(opts(x).name)), opts = opts(x); return, end  
@@ -591,7 +571,7 @@ return
 function sensitivity = translate_I2V_peaks(sensitivity, z_REF)
 %%
 
-if numel(z_REF) < nE, 
+if numel(z_REF) < nE
   z_REF = repmat(z_REF(:), [ceil(nE/numel(z_REF)) 1]); 
 end
 

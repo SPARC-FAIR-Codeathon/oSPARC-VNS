@@ -1,7 +1,7 @@
 
 if exist('compile','dir')
   disp('Testing COMPILED binaries')
-  ! ./compile/for_redistribution_files_only/nerve_mesher ./input/C-FINE.json "" ./input/sub-57_sam-1.json
+  ! ./compile/for_redistribution_files_only/nerve_mesher ./input/C-FINE.json ./input/sub-57_sam-1.xml ./input/sub-57_sam-1.json
   
   % ! ./compile/for_testing/nerve_mesher "./input/demo/array.json" "" "input/demo/nerve-script.json"
   return
