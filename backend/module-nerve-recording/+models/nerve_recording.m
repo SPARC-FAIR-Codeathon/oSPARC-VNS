@@ -157,7 +157,14 @@ if any(named('-raster')),
     time = 0:(1/fs):(time_span);
     time = [-fliplr(time) time(2:end)]; % ms
       
-    if ischar(input_raster) || iscell(input_raster)
+    if ischar(input_raster)
+      hasext = @(a,b) strncmpi(fliplr(a),fliplr(b),length(b)); 
+      if hasext(spikes_file_or_string,'.mat')
+    input_raster = load(spikes_file_or_string);
+  elseif hasext(spikes_file_or_string,'.xml')
+    raster = convert_xml_raster(spikes_file_or_string, sample_rate); 
+  
+        
 %                opts.raster = load_spikes_file(get_raster_, time, pop, opts); 
           
     end
@@ -220,8 +227,14 @@ for i_rep = 1:n_rep
         opts.raster_opts.tau1 = 0.5 ;
         opts.raster_opts.tau2 = 2.5 ; % ms time constants
         opts.evoked_potential = true; % prevent currents at time < 0
+      elseif strcmpi(settings.name,'gauss')
+          
+        if i_freq > 1, opts = []; break, end
+        opts.raster_opts.ty = 'gauss'; % double exponential        
+        opts.raster_opts.ex = population_exponent(1);
+        opts.raster_opts.fc = population_frequency(i_rate);
       elseif strcmpi(settings.name,'input')
-
+          
         error here_todo_maybe
       end
       
@@ -349,7 +362,7 @@ for i_rep = 1:n_rep
         return
       end
       
-      
+      if isempty(opts), continue, end
       %% CORE parfor: Compute summation of currents from spike raster
       
       printf('Computing spatial summation of %d APs ... ',numel(opts.raster.spk_time))

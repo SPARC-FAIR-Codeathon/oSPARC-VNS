@@ -85,11 +85,11 @@ error TODO_generate_and_save_raster_XML
 function raster = make_random_raster(time, g_xy, opts)
 
 % set up default values for opts: 
-default.ty = 'raised_cosine';
+default.ty = 'gaussian';
 default.fb = 2; % imp/s, baseline
 default.fp = 40; % imp/s, peak
-default.fc = 30; % Hz, oscillation
-default.ex = 4; % exponent
+default.fc = 10; % Hz, oscillation
+default.ex = 1; % exponent
 default.ph = 0; % phase, radians
 default.pop_dist = 'lognormal'; % poisson / exponental? 
 default.ax_sd = 1; % imp/s, stdev * mean rate
@@ -127,7 +127,7 @@ else
                              (1+exp(-(t-p.ph)./p.ex)) + p.fb;
                              
   case {'gaussian','gauss','pulse'}
-    response_fcn = @(t,p) exp(-((t-p.ph).^2/ 2*p.fc.^2)).^p.ex .* ... 
+    response_fcn = @(t,p) exp(-((t-p.ph).^2/ (2*p.fc.^2))).^p.ex .* ... 
                                  (p.fp - p.fb) + p.fb;
                          
   otherwise error('Unknown response function %s', opts.ty)
@@ -183,13 +183,16 @@ raster.bin_time = bin_x;
 raster.bin_rate = response_fcn(bin_x,opts);
 raster.pop_rate = pop_SR; 
 
+%%
+
 if nargout > 0 && (~isfield(opts,'do_plot') || opts.do_plot), return, end % skip visualisation
 
+%%
 clf, hold on, C = lines(7); 
 bar(bin_x,bin_y,1,'FaceColor',[.7 .7 .7],'EdgeColor','none')
 y_ = @(n) opts.fp * (n/max(n) + 1.02);
 plot(spike_time,y_(spike_axon),'k.');
-plot(time, pop_SR,'-s','LineWidth',1.1,'Color',C(1,:))
+plot(time, pop_SR,'-','LineWidth',1.5,'Color',C(1,:))
 % plot(raster.bin_time, raster.bin_rate,'-s','LineWidth',1.1,'Color',C(1,:))
 tools.tidyPlot
 

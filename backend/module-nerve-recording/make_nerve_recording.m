@@ -64,7 +64,7 @@ if exist(spikes_file_or_string,'file')
 else
   %% Parse spikes_file_or_string
   
-  entries = regexp(spikes_file_or_string,'(flat|burst|drift)[^\]]+[^\,;\s]+','match'); 
+  entries = regexp(spikes_file_or_string,'(flat|burst)[^\]]+[^\,;\s]+','match'); 
   
   if isempty(entries)
     warning('no flat[], burst[], or drift[] entries provided to %s', mfilename)
@@ -78,29 +78,34 @@ else
       
     nmr_setting = models.nerve_recording('-list',entries{ii}); 
     my_c = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)','match'));
-    if ~isnan(my_c) && ~isempty(my_c), coherence = my_c; end
+    if ~isempty(my_c) && ~any(isnan(my_c)), coherence = my_c; end
     my_r = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)'));
-    if ~isnan(my_r) && ~isempty(my_r), repeats = my_r; end
+    if ~isempty(my_r) && ~any(isnan(my_r)), repeats = my_r; end
     
     nmr_setting.coherence = coherence; 
     nmr_setting.n_reps = repeats;
     
     input_args = regexp(entries{ii},'(?<=\[)[^\]]+','match','once');
-    
+    input_args = str2double(strsplit(input_args,{',',';',' '})); 
     switch(lower(entries{ii}(1:4)))
      case 'flat'
-       nmr_setting.spikerate = reshape(str2double(strsplit( ...
-                                       input_args,{',',';',' '})), [], 1); 
+       nmr_setting.spikerate = reshape(input_args, [], 1); 
      case 'burs'
          
+       input_args(end+1 : ceil(end/3)*3) = 0; 
          
+       nmr_setting.name = 'gauss'; 
          
-         
-     case 'drif'
-         
-         
+         error todo_b
          
     end
+    
+    nmr_setting.wave_path = sprintf('%s_%02d', nmr_setting.wave_path, ii);
+    
+    models.nerve_recording(inputs{:}, '-settings', nmr_setting, '-no-par' )
+
+    
+    
   end
   
 end
@@ -109,7 +114,6 @@ end
 
 
 
-models.nerve_recording(inputs{:})
 
 disp('TODO: condense epochs into a single file to return to user')
 
@@ -331,65 +335,75 @@ for ii = 1:numel(info.Children)
   info.Data.(attr_(info.Children(ii),'name')) = val; 
 end, info = info.Data; 
 
+epochs = the(xml,'s');
+
+if isempty(epochs), epochs = xml; end
+
+[epochs.Data] = deal([]); 
+
 %% Get spike-times
 
-spk_time = []; 
-spk_unit = []; 
+for tt = 1:numel(epochs)
 
-spikes = the(xml,'s');
+    spk_time = []; 
+    spk_unit = []; 
 
-for ii = 1:numel(spikes)    
-  spk_time = [spk_time; str2double(attr_(spikes(ii),'t'))]; %#ok<AGROW>
-  spk_unit = [spk_unit; str2double(attr_(spikes(ii),'u'))]; %#ok<AGROW>
+    spikes = the(epochs,'s');
+
+    for ii = 1:numel(spikes)    
+      spk_time = [spk_time; str2double(attr_(spikes(ii),'t'))]; %#ok<AGROW>
+      spk_unit = [spk_unit; str2double(attr_(spikes(ii),'u'))]; %#ok<AGROW>
+    end
+
+    units = the(epochs,'unit');
+
+    for ii = 1:numel(units)
+
+        uid = str2double(attr_(units(ii),'id'));    
+        t = textscan(units(ii).Children(1).Data,'%f');
+
+        spk_time = [spk_time; t{1}];       %#ok<AGROW>
+        spk_unit = [spk_unit; 0*t{1}+uid]; %#ok<AGROW>
+    end
+
+    ok = ~isnan(spk_time) & ~isnan(spk_unit); 
+    if ~all(ok)
+
+      warning('In %s, %d/%d spiketimes were corrupted.', ...
+                filename, sum(~ok), numel(ok))
+      spk_time = spk_time(ok); 
+      spk_unit = spk_unit(ok);
+    end
+
+
+    if isfield(info,'time_start') && isfield(info,'time_end')  
+         time = (info.time_start) : (1/fs) : (info.time_end);   
+    else time = floor(min(spk_time)) : (1/fs) : ceil(max(spk_time)); 
+    end
+
+    if isfield(info,'n_units'), nA = info.n_units;
+    elseif isfield(info,'n_axons'), nA = info.n_axons;
+    elseif isfield(info,'n_cells'), nA = info.n_cells;
+    elseif isfield(info,'n_spikes'), nA = info.n_spikes;
+    else nA = max(spk_unit); 
+    end
+
+    if isfield(info,'bin_dt')    
+         bin_x = min(time):(info.bin_dt):max(time);
+    else bin_x = min(time):(1):max(time); % default 1 ms bins
+    end, bin_y = hist(spk_time,bin_x);  %#ok<HIST>
+    bin_y = bin_y ./ mean(diff(bin_x)) / nA * 1000;
+
+    raster.spk_time = spk_time;
+    raster.spk_axon = spk_unit;
+    raster.spk_rate = bin_y;
+    raster.bin_time = bin_x; 
+    raster.bin_rate = []; % undefined
+    raster.pop_rate = numel(spk_time) / range(time) / nA * 1000;
+
+    raster.file_info = info; 
 end
 
-units = the(xml,'unit');
-
-for ii = 1:numel(units)
-
-    uid = str2double(attr_(units(ii),'id'));    
-    t = textscan(units(ii).Children(1).Data,'%f');
-
-    spk_time = [spk_time; t{1}];       %#ok<AGROW>
-    spk_unit = [spk_unit; 0*t{1}+uid]; %#ok<AGROW>
-end
-
-ok = ~isnan(spk_time) & ~isnan(spk_unit); 
-if ~all(ok)
-    
-  warning('In %s, %d/%d spiketimes were corrupted.', ...
-            filename, sum(~ok), numel(ok))
-  spk_time = spk_time(ok); 
-  spk_unit = spk_unit(ok);
-end
-
-
-if isfield(info,'time_start') && isfield(info,'time_end')  
-     time = (info.time_start) : (1/fs) : (info.time_end);   
-else time = floor(min(spk_time)) : (1/fs) : ceil(max(spk_time)); 
-end
-
-if isfield(info,'n_units'), nA = info.n_units;
-elseif isfield(info,'n_axons'), nA = info.n_axons;
-elseif isfield(info,'n_cells'), nA = info.n_cells;
-elseif isfield(info,'n_spikes'), nA = info.n_spikes;
-else nA = max(spk_unit); 
-end
-
-if isfield(info,'bin_dt')    
-     bin_x = min(time):(info.bin_dt):max(time);
-else bin_x = min(time):(1):max(time); % default 1 ms bins
-end, bin_y = hist(spk_time,bin_x);  %#ok<HIST>
-bin_y = bin_y ./ mean(diff(bin_x)) / nA * 1000;
-
-raster.spk_time = spk_time;
-raster.spk_axon = spk_unit;
-raster.spk_rate = bin_y;
-raster.bin_time = bin_x; 
-raster.bin_rate = []; % undefined
-raster.pop_rate = numel(spk_time) / range(time) / nA * 1000;
-
-raster.file_info = info; 
 
 return
 
