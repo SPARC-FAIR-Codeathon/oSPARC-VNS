@@ -39,7 +39,7 @@ get_ = @(v) varargin{find(named(v))+1};
 % files or gather from input
 if nargin > 0, file = varargin{1}; else file = {}; end
 if isempty(file) || file(1) == '-'
-   file = {'sensitivity*.mat'; 'stimulus*.mat'}; 
+   file = {'*.mat'}; 
    if any(named('-af')), file = file([2 1]); end
   [file,folder] = uigetfile(file,[],tools.file('out~\'));
   if all(folder == 0), return, end % cancelled
@@ -610,8 +610,11 @@ for ee = 1:nE
     else sensor{ff}.Values = e_pot;
     end
     
+    is_3D_trajectory = isfield(EM,'info') && ...
+                       isfield(EM.info,'FascicleTrajectory');
+    
     if isempty(xy{ff})
-      if isfield(EM.info,'FascicleTrajectory')
+      if is_3D_trajectory
       
         alist = dir(tools.file('in~\axons\*.mat'));
         error get_FascicleTrajectory
@@ -634,7 +637,7 @@ for ee = 1:nE
                            xy0(2)-xy0(4)*linspace(-1,1,opts.xy_res));
                          
                          
-        if isfield(EM.info,'FascicleTrajectory')
+        if is_3D_trajectory
           
           xyz = tools.from_trajectory(EM,F,[gx(:) gy(:)]);
           ok = in_loop([gx(:) gy(:)],F.outline([1:end 1],:,ff));
@@ -656,7 +659,7 @@ for ee = 1:nE
     
     for ii = 1:size(xy{ff},1)
         
-        if isfield(EM.info,'FascicleTrajectory')
+        if is_3D_trajectory
           
           
           xyz = tools.from_trajectory(EM,F,xy{ff}(ii,:));
@@ -730,7 +733,7 @@ for ee = 1:nE
     else
       plot(outline{ff}(:,1),outline{ff}(:,2),'-','Color',[0 0 0 0.3])
       scatter(xy{ff}(:,1),xy{ff}(:,2),[],peak_val{ff}(:),'.')
-      colormap(gca,'magma')
+      colormap(gca,tools.magma)
     end
     
     fwhm_val{ff}(isnan(peak_val{ff})) = NaN;
@@ -742,11 +745,11 @@ for ee = 1:nE
     if opts.do_image, fwhm_val{ff} = reshape(fwhm_val{ff},size(gx,1),[]);
       imagesc(gx(1,:),gy(:,1),fwhm_val{ff})
       plot(outline{ff}(:,1),outline{ff}(:,2),'-','Color',[0 0 0 0.6])
-      colormap(gca,[.9 .9 .9; magma(256)])
+      colormap(gca,[.9 .9 .9; tools.magma(256)])
     else
       plot(outline{ff}(:,1),outline{ff}(:,2),'-','Color',[0 0 0 0.3])
       scatter(xy{ff}(:,1),xy{ff}(:,2),[],fwhm_val{ff}(:),'.')
-      colormap(gca,'magma')
+      colormap(gca,tools.magma)
     end
   end
   
@@ -1082,7 +1085,7 @@ plot3(xyz(:,3),xyz(:,2),xyz(:,1),'Color',[0 0 0 0.5])
 
 scatter3(xyz(:,3),xyz(:,2),xyz(:,1),10,pot,'o','filled')
 scatter3(xyz(1,3),xyz(1,2),xyz(1,1),8,pot(1),'s')
-axis image, tools.tidyPlot, grid on, colormap magma
+axis image, tools.tidyPlot, grid on, colormap(tools.magma)
 % set(get(gca,'Children'),'Clipping','off')
 set(gca,'UserData',triangulation(double(EM.model.elems),EM.model.nodes));
 update_mesh_view(gca,init);
