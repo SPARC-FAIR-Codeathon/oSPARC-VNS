@@ -1,6 +1,6 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3479411958" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/C:\Users\Calvin\Documents\MATLAB\Keast-lab\oSPARC\code\CDE_compile\for_redistribution" target="target.ezdeploy.standalone" target-name="Application Compiler">
-    <param.appname>CE_nerve_mesh</param.appname>
+  <configuration build-checksum="4278771414" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+    <param.appname>simulate_nerve_recording</param.appname>
     <param.icon />
     <param.icons />
     <param.version>1.0</param.version>
@@ -11,7 +11,7 @@
     <param.description>Simulate extracellular nerve recording for a given input nerve, axon population, and device.</param.description>
     <param.screenshot />
     <param.guid />
-    <param.installpath.string>/University_of_Melbourne/CE_nerve_mesh/</param.installpath.string>
+    <param.installpath.string>/University_of_Melbourne/simulate_nerve_recording/</param.installpath.string>
     <param.installpath.combo>option.installpath.user</param.installpath.combo>
     <param.logo />
     <param.install.notes />
@@ -110,10 +110,10 @@ ${LD_LIBRARY_PATH}:MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa
       <file>${PROJECT_ROOT}/+models/spike_to_wave.m</file>
     </fileset.depfun>
     <build-deliverables>
-      <file location="${PROJECT_ROOT}/compile/for_testing" name="CE_nerve_mesh" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_testing/CE_nerve_mesh</file>
+      <file location="${PROJECT_ROOT}/compile/for_testing" name="simulate_nerve_recording" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_testing/simulate_nerve_recording</file>
       <file location="${PROJECT_ROOT}/compile/for_testing" name="readme.txt" optional="true">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_testing/readme.txt</file>
-      <file location="${PROJECT_ROOT}/compile/for_testing" name="run_CE_nerve_mesh.sh" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_testing/run_CE_nerve_mesh.sh</file>
       <file location="${PROJECT_ROOT}/compile/for_testing" name="splash.png" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_testing/splash.png</file>
+      <file location="${PROJECT_ROOT}/compile/for_testing" name="run_simulate_nerve_recording.sh" optional="false">/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_testing/run_simulate_nerve_recording.sh</file>
     </build-deliverables>
     <workflow />
     <matlab>
