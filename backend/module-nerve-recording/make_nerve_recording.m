@@ -59,30 +59,21 @@ else
   disp TODO_pre_save_NWB_rasters
 end
 
-%
-% if ~isempty(nerve_script)
-%  
-%   printf('Loading %s', nerve_script);
-%   if has_ext_(nerve_script,'.mat'), n = load(nerve_script); 
-%   elseif has_ext_(nerve_script,'.json'), n = tools.parse_json(nerve_script);
-%   else error('%s: unknown extension, expected .mat or .json', nerve_script)
-%   end      
-% 
-%   if isfield(n,'nerve'), opts.nerve = n.nerve; else opts.nerve = n; end
-%   if isfield(n,'mesh'), opts.mesh = n.mesh; end
-% end
-% 
-% if ~isempty(nerve_xml), opts.nerve.file = nerve_xml;
-% elseif ~isfield(opts,'nerve'), opts.nerve.file = nerve_xml;
-% end
 
 
-% mnr_args = {'-coh',c,'-reps',r}
 
+
+
+
+if exist(tools.file('out~\waves'),'dir')
+     rmdir(tools.file('out~\waves'),'s');
+end, mkdir(tools.file('out~\waves')); 
 
 models.nerve_recording(inputs{:})
 
-error TODO
+disp('TODO: condense epochs into a single file to return to user')
+
+return
 
 
 
@@ -242,7 +233,7 @@ for ff = 1:nF
 
     sel = strcmpi(EM.model.object_name,fasc_(ff));
     if sum(sel) == 0, sel = strcmpi(EM.model.object_name,fasc_(1)); end
-    if sum(sel) ~= 1,
+    if sum(sel) ~= 1
         error('Object %s not found in EM.model.object_name',fasc_(ff)); 
     end
     idx = unique(EM.model.elems(EM.model.object_id{sel},:));
@@ -262,6 +253,8 @@ EM.info.filename = filename;
 if exist(tools.file('in~\eidors'),'dir')
      rmdir(tools.file('in~\eidors'),'s');
 end, mkdir(tools.file('in~\eidors')); 
+
+
 
 filename = tools.file('in~\eidors\sensitivity.mat'); 
 save(filename,'-struct','EM')
