@@ -41,12 +41,12 @@ if true
 end
 
 
-ax_paths = unpack_axons_file(axons_file); 
-ax_paths = [{'-file', fields_file}, ax_paths];
+inputs = [convert_eidors_file(fields_file) ... 
+          unpack_axons_file(axons_file)] 
 
 if exist(spikes_file_or_string,'file')
   if hasext(spikes_file_or_string,'.mat')
-    raster = load(spikes_file_or_string)
+    raster = load(spikes_file_or_string);
   elseif hasext(spikes_file_or_string,'.xml')
       
   elseif hasext(spikes_file_or_string,'.xml')
@@ -81,7 +81,7 @@ end
 % mnr_args = {'-coh',c,'-reps',r}
 
 
-models.nerve_recording(ax_paths{:})
+models.nerve_recording(inputs{:})
 
 error TODO
 
@@ -94,11 +94,14 @@ error TODO
 %% generate expected file structure in tempdir
 function args = unpack_axons_file(filename) 
 
-tools.cache('reset')
 
 load(filename,'axons','axon_models','nerve');
 
 model_names = unique({axons.axon_model});
+
+if exist(tools.file('in~\axons'),'dir')
+     rmdir(tools.file('in~\axons'),'s');
+end, mkdir(tools.file('in~\axons')); 
 
 % cache = @(varargin) tools.cache('path',sprintf(varargin{:}));
 cache = @(varargin) ['./input/' sprintf(varargin{:})];
@@ -214,11 +217,56 @@ function [pop,sam] = merge_populations(pop,axon_type)
     
   if pop.myelinated, sam = sam_myel; else sam = sam_unmy; end
 
+%% Convert v_extracellular to structure 
+function args = convert_eidors_file(filename)
 
+EM = load(filename); 
+% see https://en.wikipedia.org/wiki/Reciprocity_(electromagnetism)#Reciprocity_for_electrical_networks               
+
+nF = sum(contains(EM.model.object_name,'Fasc')) - ...
+     sum(contains(EM.model.object_name,'P_Fasc'));
+
+fasc_ = @(n) sprintf('Fascicle%d',n);
+
+% EM.v_extracellular is a list, (nodes x electrodes) of the sequential
+% bipolar stimulus-induced extracellular potential, for ALL nodes 
+% (not just fascicle nodes). 
+
+% a sensitivity file is broken up by fascicle, which each fascicle
+% containing a NODE index and a list of per-node values 
+
+% EM.model.object_id is a list of ELEMENT ids which make up each object
+% in the EIDORS model. Gather each NODE in that set of elements, then use
+% that to emulate the EM.FascicleN.pot/idx 
+
+for ff = 1:nF
+
+    sel = strcmpi(EM.model.object_name,fasc_(ff));
+    if sum(sel) == 0, sel = strcmpi(EM.model.object_name,fasc_(1)); end
+    if sum(sel) ~= 1,
+        error('Object %s not found in EM.model.object_name',fasc_(ff)); 
+    end
+    idx = unique(EM.model.elems(EM.model.object_id{sel},:));
+
+    EM.(fasc_(ff)).idx = idx'; 
+    EM.(fasc_(ff)).pot = EM.v_extracellular(idx,:)';
+end  
+
+EM.utils.x_ = '@(i) out.model.nodes(i,1)';
+EM.utils.y_ = '@(i) out.model.nodes(i,2)';
+EM.utils.z_ = '@(i) out.model.nodes(i,3)';
+EM.utils.fac_ = '@(i) out.(sprintf(''Fascicle%d'',i)).idx'; 
+
+EM = rmfield(EM,'v_extracellular');
+EM.info.filename = filename; 
+
+if exist(tools.file('in~\eidors'),'dir')
+     rmdir(tools.file('in~\eidors'),'s');
+end, mkdir(tools.file('in~\eidors')); 
+
+filename = tools.file('in~\eidors\sensitivity.mat'); 
+save(filename,'-struct','EM')
+args = {'-file', filename};
   
-  
-
-
-
-
+return
 
