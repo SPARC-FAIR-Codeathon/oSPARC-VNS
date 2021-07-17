@@ -1,0 +1,7 @@
+
+# Intended to get written to /conf/local.yaml: 
+
+local_calling_dir_path: {{installPath}}
+local_data_dir: {{userDir}}
+mrc_data_dir: ''
+spartan_data_dir: ''
