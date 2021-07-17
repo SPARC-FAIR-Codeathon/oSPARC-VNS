@@ -126,6 +126,10 @@ else
     response_fcn = @(t,p) (p.fp - p.fb) ./ ...
                              (1+exp(-(t-p.ph)./p.ex)) + p.fb;
                              
+  case {'gaussian','gauss','pulse'}
+    response_fcn = @(t,p) exp(-((t-p.ph).^2/ 2*p.fc.^2)).^p.ex .* ... 
+                                 (p.fp - p.fb) + p.fb;
+                         
   otherwise error('Unknown response function %s', opts.ty)
  end
 end

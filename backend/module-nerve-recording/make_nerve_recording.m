@@ -16,7 +16,7 @@ end
 
 if nargin < 3 || isempty(spikes_file_or_string)    
   fprintf('Arg 2 not set, using default spikes settings: ')
-  spikes_file_or_string = 'flat[1,2,5,10]';
+  spikes_file_or_string = 'flat[0.2,2]';
   fprintf('%s\n', spikes_file_or_string)
 end
 
@@ -40,23 +40,63 @@ if true
     disp('====================================================')
 end
 
-
 inputs = [convert_eidors_file(fields_file) ... 
-          unpack_axons_file(axons_file)] 
+          unpack_axons_file(axons_file)]; 
 
 if exist(spikes_file_or_string,'file')
   if hasext(spikes_file_or_string,'.mat')
     raster = load(spikes_file_or_string);
   elseif hasext(spikes_file_or_string,'.xml')
-      
-  elseif hasext(spikes_file_or_string,'.xml')
-      raster = load(spikes_file_or_string);       
+    raster = convert_xml_raster(spikes_file_or_string, sample_rate); 
+  elseif hasext(spikes_file_or_string,'.json')
+    raster = tools.parse_json(spikes_file_or_string);
+  elseif hasext(spikes_file_or_string,'.nwb')
+    raster = read_NWB_raster(spikes_file_or_string);
   else error('Unknown file format "%s", expected {.mat,.json,.xml}');
   end
-    
+  
 else
+  %% Parse spikes_file_or_string
+  
+  entries = regexp(spikes_file_or_string,'(flat|burst|drift)[^\]]+[^\,;\s]+','match'); 
+  
+  if isempty(entries)
+    warning('no flat[], burst[], or drift[] entries provided to %s', mfilename)
+    entries = {'flat[0.2,2]'};
+  end
+  
+  coherence = 1; % default coherence
+  repeats = 3;   % default # reps
+  
+  for ii = 1:numel(entries)
+      
+    nmr_setting = models.nerve_recording('-list',entries{ii}); 
+    my_c = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)','match'));
+    if ~isnan(my_c) && ~isempty(my_c), coherence = my_c; end
+    my_r = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)'));
+    if ~isnan(my_r) && ~isempty(my_r), repeats = my_r; end
     
-  disp TODO_pre_save_NWB_rasters
+    nmr_setting.coherence = coherence; 
+    nmr_setting.n_reps = repeats;
+    
+    input_args = regexp(entries{ii},'(?<=\[)[^\]]+','match','once');
+    
+    switch(lower(entries{ii}(1:4)))
+     case 'flat'
+       nmr_setting.spikerate = reshape(str2double(strsplit( ...
+                                       input_args,{',',';',' '})), [], 1); 
+     case 'burs'
+         
+         
+         
+         
+     case 'drif'
+         
+         
+         
+    end
+  end
+  
 end
 
 %
@@ -78,7 +118,6 @@ end
 
 
 % mnr_args = {'-coh',c,'-reps',r}
-
 
 models.nerve_recording(inputs{:})
 
@@ -269,3 +308,136 @@ args = {'-file', filename};
   
 return
 
+function raster = convert_xml_raster(filename, fs)
+
+
+%%
+if ~exist('filename','var'), filename = 'test-raster.xml'; end
+
+xml = tools.parse_xml(filename);  
+xml.filename = filename;
+
+%% x.Children().name representation
+the = @(x,n) x.Children(strncmpi({x.Children.Name},n,length(n)));
+attr_ = @(x,n) x.Attributes(strcmpi(n,{x.Attributes.Name})).Value;
+trim_ = @(x) x.Children(~contains({x.Children.Name},'#text'));
+
+xml.Children = trim_(xml); 
+
+info = the(xml,'config'); 
+info.Children = trim_(info);
+
+info.Data = struct; 
+info.Data.filename = filename;
+info.Data.syntax = xml.Name;
+
+for ii = 1:numel(info.Children)
+  val = attr_(info.Children(ii),'value'); 
+  if ~isnan(str2double(val)), val = str2double(val); end
+  info.Data.(attr_(info.Children(ii),'name')) = val; 
+end, info = info.Data; 
+
+%% Get spike-times
+
+spk_time = []; 
+spk_unit = []; 
+
+spikes = the(xml,'s');
+
+for ii = 1:numel(spikes)    
+  spk_time = [spk_time; str2double(attr_(spikes(ii),'t'))]; %#ok<AGROW>
+  spk_unit = [spk_unit; str2double(attr_(spikes(ii),'u'))]; %#ok<AGROW>
+end
+
+units = the(xml,'unit');
+
+for ii = 1:numel(units)
+
+    uid = str2double(attr_(units(ii),'id'));    
+    t = textscan(units(ii).Children(1).Data,'%f');
+
+    spk_time = [spk_time; t{1}];       %#ok<AGROW>
+    spk_unit = [spk_unit; 0*t{1}+uid]; %#ok<AGROW>
+end
+
+ok = ~isnan(spk_time) & ~isnan(spk_unit); 
+if ~all(ok)
+    
+  warning('In %s, %d/%d spiketimes were corrupted.', ...
+            filename, sum(~ok), numel(ok))
+  spk_time = spk_time(ok); 
+  spk_unit = spk_unit(ok);
+end
+
+
+if isfield(info,'time_start') && isfield(info,'time_end')  
+     time = (info.time_start) : (1/fs) : (info.time_end);   
+else time = floor(min(spk_time)) : (1/fs) : ceil(max(spk_time)); 
+end
+
+if isfield(info,'n_units'), nA = info.n_units;
+elseif isfield(info,'n_axons'), nA = info.n_axons;
+elseif isfield(info,'n_cells'), nA = info.n_cells;
+elseif isfield(info,'n_spikes'), nA = info.n_spikes;
+else nA = max(spk_unit); 
+end
+
+if isfield(info,'bin_dt')    
+     bin_x = min(time):(info.bin_dt):max(time);
+else bin_x = min(time):(1):max(time); % default 1 ms bins
+end, bin_y = hist(spk_time,bin_x);  %#ok<HIST>
+bin_y = bin_y ./ mean(diff(bin_x)) / nA * 1000;
+
+raster.spk_time = spk_time;
+raster.spk_axon = spk_unit;
+raster.spk_rate = bin_y;
+raster.bin_time = bin_x; 
+raster.bin_rate = []; % undefined
+raster.pop_rate = numel(spk_time) / range(time) / nA * 1000;
+
+raster.file_info = info; 
+
+return
+
+
+function generate_NWB_raster(inputs)
+
+
+
+
+error here
+
+
+nwb = NwbFile( ...
+    'session_description', 'o2S2PARC simulation of nerve recording',...
+    'identifier', 'Mouse5_Day3', ...
+    'session_start_time', datetime(now,'ConvertFrom','datenum'), ...    
+    'general_session_id', 'session_1234', ... % optional
+        'ghjkl' )
+    
+    
+trials = types.core.TimeIntervals( ...
+    'colnames', {'start_time', 'stop_time', 'correct'}, ...
+    'description', 'trial data and properties', ...
+    'id', types.hdmf_common.ElementIdentifiers('data', 0:2), ...
+    'start_time', types.hdmf_common.VectorData('data', [.1, 1.5, 2.5], ...
+   	'description','start time of trial'), ...
+    'stop_time', types.hdmf_common.VectorData('data', [1., 2., 3.], ...
+   	'description','end of each trial'), ...
+    'correct', types.hdmf_common.VectorData('data', [false, true, false], ...
+   	'description', 'whether the trial was correct'))
+    
+
+
+    
+function data = r
+    error('TODO: understand how to read NWB files')
+    
+    
+    
+    
+    
+    
+    
+    
+    

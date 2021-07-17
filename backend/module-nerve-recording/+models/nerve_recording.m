@@ -150,6 +150,25 @@ end
 if any(named('-rep')), settings.n_reps = get_('-rep'); end
 n_rep = settings.n_reps;
 
+if any(named('-raster')),
+  input_raster = get_('-raster');
+  if ~isa(input_raster,'function_handle')
+  
+    time = 0:(1/fs):(time_span);
+    time = [-fliplr(time) time(2:end)]; % ms
+      
+    if ischar(input_raster) || iscell(input_raster)
+%                opts.raster = load_spikes_file(get_raster_, time, pop, opts); 
+          
+    end
+      
+      error parse_this_argument
+      
+  end
+end
+    
+    
+
 warn_once = true; 
 check_folder = true; 
 
@@ -201,6 +220,9 @@ for i_rep = 1:n_rep
         opts.raster_opts.tau1 = 0.5 ;
         opts.raster_opts.tau2 = 2.5 ; % ms time constants
         opts.evoked_potential = true; % prevent currents at time < 0
+      elseif strcmpi(settings.name,'input')
+
+        error here_todo_maybe
       end
       
       if size(population_spikerate,2) >= 2 
@@ -243,13 +265,14 @@ for i_rep = 1:n_rep
         opts.raster_opts.modulation = settings.modulation_fun;
       end
 
-      if any(named('-raster')), 
-          get_raster_ = get_('-raster');
-          opts.raster_opts.loop_indices = [i_coh i_freq i_rate i_rep ty]; 
-          if ischar(get_raster_) || iscell(get_raster_)
-               opts.raster = load_spikes_file(get_raster_, time, pop, opts); 
-          else opts.raster = get_raster_(time,xy,opts.raster_opts); 
-          end
+      if strcmpi(settings.name,'input')
+          
+          erorr get_raster_from_inpout
+          
+      elseif any(named('-raster')), 
+        get_raster_ = get_('-raster');
+        opts.raster_opts.loop_indices = [i_coh i_freq i_rate i_rep ty]; 
+        opts.raster = get_raster_(time,xy,opts.raster_opts); 
       else opts.raster = models.random_raster(time,xy,opts.raster_opts);          
       end
       
@@ -365,7 +388,7 @@ for i_rep = 1:n_rep
       end
       raster{ty} = opts.raster;  %#ok<AGROW>
       
-      if isempty(options), options = opts; else options(ty) = opts; end
+      if isempty(options), options = opts; else options(ty) = opts; end %#ok<AGROW>
     end % ty [1..4]
 
     % This check prevents from having to open another instance
@@ -546,21 +569,11 @@ opts(4).file_scheme = 'epoch_k%0.1f_c%0.1f (%%d).mat';
 opts(5) = opts(1); 
 opts(5).name = 'burst';
 opts(5).frequency = [100 50 20 10];
-opts(5).spikerate =  [.1 3; 0.75 1.5; 1 1; 1 30; 7.5 15; 10 10 ]; 
+opts(5).spikerate = [.1 3; 0.75 1.5; 1 1; 1 30; 7.5 15; 10 10 ]; 
+opts(5).exponent  =  ones(size(opts.spikerate)); 
 opts(5).wave_path = 'burst'; 
 opts(5).file_scheme = 'epoch_k%0.1f_f%0.1f_c%0.1f (%%d).mat';
 opts(5).file_vector = @(ex,sr,fr,ch) [sr(2) fr ch]; 
-
-
-opts(6) = opts(1); 
-opts(6).name = 'phase';
-opts(6).frequency = [9.1 30];
-% opts(6).spikerate =  [3.75 7.5 0] + linspace(0,360,7)' * [0 0 1];
-opts(6).spikerate =  [1.8 12 0] + linspace(0,360,7)' * [0 0 1];
-opts(6).spikerate = [opts(6).spikerate(1:6,:); 5 5 0; 0.2 0.2 0];
-opts(6).wave_path = 'phase'; 
-opts(6).file_scheme = 'epoch_k%0.1f_f%0.1f_p%0.0f_c%0.1f (%%d).mat';
-opts(6).file_vector = @(ex,sr,fr,ch) [sr(2) fr sr(3) ch]; 
 
 opts(7) = opts(1); 
 opts(7).name = 'flat';
