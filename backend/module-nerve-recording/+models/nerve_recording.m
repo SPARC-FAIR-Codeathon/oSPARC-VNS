@@ -44,8 +44,9 @@ get_ = @(v) varargin{find(named(v))+1};
 
 if any(named('-q')), printf = @(varargin) []; else printf = @fprintf; end
 
-if isempty(strfind(ctfroot, 'MATLAB')) %#ok<*STREMP>
-    save_default_options ('-mat-binary'), end
+if ~isdeployed && isempty(strfind(ctfroot, 'MATLAB')) %#ok<*STREMP>
+    save_default_options ('-mat-binary'), 
+end
 
 settings = get_settings(varargin{:}); 
 
@@ -245,8 +246,8 @@ for i_rep = 1:n_rep
       if any(named('-raster')), 
           get_raster_ = get_('-raster');
           opts.raster_opts.loop_indices = [i_coh i_freq i_rate i_rep ty]; 
-          if ischar(raster), opts.raster = load_spikes_file(get_raster_, time, pop, opts); 
-          elseif iscell(raster), opts.raster = load_spikes_file(get_raster_, time, pop, opts); 
+          if ischar(get_raster_) || iscell(get_raster_)
+               opts.raster = load_spikes_file(get_raster_, time, pop, opts); 
           else opts.raster = get_raster_(time,xy,opts.raster_opts); 
           end
       else opts.raster = models.random_raster(time,xy,opts.raster_opts);          
@@ -530,7 +531,7 @@ opts(3).name = 'drift';
 opts(3).frequency = [1 1 1];
 opts(3).spikerate = [0.1 1; 1 5; 1 10; 1 20; 3 4];
 opts(3).exponent  = [1 5 20];  
-opts(2).coherence = [0.3 1 3]; 
+opts(3).coherence = [0.3 1 3]; 
 opts(3).wave_path = 'drift'; 
 opts(3).file_scheme = 'epoch_b%0.1f_k%0.1f_c%0.1f_w%0.0f (%%d).mat';
 opts(3).file_vector = @(ex,sr,fr,ch) [sr(1:2) ch ex]; 
