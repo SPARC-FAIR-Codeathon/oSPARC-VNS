@@ -54,6 +54,10 @@ inputs = [convert_eidors_file(fields_file) ...
       
 if isdeployed, disp('Progress: 5%'); end
       
+if any(named('-:')), inputs = [inputs varargin(find(named('-:'))+1:end)]; 
+end
+
+
 %% Determine spiketimes to stimulate
 
 if exist(spikes_file,'file')

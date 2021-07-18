@@ -3,7 +3,7 @@ if exist('compile','dir')
     
     disp('Testing COMPILED binaries')
     
-    ! ./compile/for_testing/module_EIDORS_compute_fields "./input/demo/example cuff.mat"    
+    ! ./compile/for_testing/simulate_nerve_recording "" "" "" "" 30 
     
     return
 end

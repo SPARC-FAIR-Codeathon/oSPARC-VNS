@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="4278771414" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="3881475612" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>simulate_nerve_recording</param.appname>
     <param.icon />
     <param.icons />
@@ -45,7 +45,7 @@ ${LD_LIBRARY_PATH}:MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa
     <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
     <param.windows.command.prompt>false</param.windows.command.prompt>
     <param.create.log>true</param.create.log>
-    <param.log.file>log_nerveMesh.log</param.log.file>
+    <param.log.file>log_nerveRecording.log</param.log.file>
     <param.native.matlab>false</param.native.matlab>
     <param.checkbox>false</param.checkbox>
     <param.example />
@@ -98,11 +98,14 @@ ${LD_LIBRARY_PATH}:MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+plots/view_mesh.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/cache.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/configuration.m</file>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/detrend_wave.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/file.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/from_trajectory.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/magma.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/opts_to_args.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/parse_arguments.m</file>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/parse_json.m</file>
+      <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/parse_xml.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/setupEIDORS.m</file>
       <file>/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/common/+tools/tidyPlot.m</file>
       <file>${PROJECT_ROOT}/+models/nerve_recording.m</file>
