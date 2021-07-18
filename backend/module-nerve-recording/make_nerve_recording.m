@@ -1,6 +1,6 @@
 
 function make_nerve_recording( axons_file, fields_file, ...
-                               spikes_file_or_string, sample_rate, ...
+                               spikes_string, spikes_file, sample_rate, ...
                                varargin)
 % Make_nerve_recording
 
@@ -14,29 +14,34 @@ if nargin < 2 || isempty(fields_file)
   fields_file = './input/demo/extracellular-potential (1).mat'; 
 end
 
-if nargin < 3 || isempty(spikes_file_or_string)    
-  fprintf('Arg 2 not set, using default spikes settings: ')
-  spikes_file_or_string = 'flat[0.2,2]';
-  fprintf('%s\n', spikes_file_or_string)
+if nargin < 3, spikes_string = 'flat[0.2,2]';
+  fprintf('Arg 3 not set, using default spikes settings: ')
+  fprintf('%s\n', spikes_string)
 end
 
-if nargin < 4 || isempty(sample_rate)    
-  sample_rate = 30; % kHz
-  fprintf('Arg 4 not set, using default sample rate: %g ks/s\n', sample_rate)
+if nargin < 4 || (isempty(spikes_string) && isempty(spikes_file))
+  spikes_file = './input/demo/example.xml'; 
+  fprintf('Arg 4 not set, using demo raster xml file: ')
+  fprintf('%s\n', spikes_file)
+elseif ~isempty(spikes_string) && ~contains(spikes_string,'file')
+  spikes_file = ''; 
 end
+
+if nargin < 5 || isempty(sample_rate)    
+  sample_rate = 30; % kHz
+  fprintf('Arg 5 not set, using default sample rate: %g ks/s\n', sample_rate)
+end
+
 
 named = @(v) strncmpi(v,varargin,length(v)); 
-hasext = @(a,b) strncmpi(fliplr(a),fliplr(b),length(b)); 
 tools.file('root',pwd); % set 'root' to this folder
 
-if any(named('-q')), printf = @(s,varargin) 0; 
-else printf = @(s,varargin) fprintf([s '\n'],varargin{:}); 
-end
 
 if true
     disp('====================================================')
     fprintf('Running models.nerve_recording %s\n', datestr(now))
-    fprintf('{1} = %s\n{2} = %s\n{3} = %s\n',axons_file, fields_file, spikes_file_or_string)
+    fprintf('{1} = %s\n{2} = %s\n{3} = %s%s\n',axons_file, fields_file,  ...
+                spikes_string, spikes_file)
     disp('====================================================')
 end
 
@@ -47,27 +52,19 @@ end, mkdir(tools.file('out~\waves'));
 inputs = [convert_eidors_file(fields_file) ... 
           unpack_axons_file(axons_file)]; 
       
+if isdeployed, disp('Progress: 5%'); end
+      
 %% Determine spiketimes to stimulate
 
-if exist(spikes_file_or_string,'file')
-  if hasext(spikes_file_or_string,'.mat')
-    raster = load(spikes_file_or_string);
-  elseif hasext(spikes_file_or_string,'.xml')
-    raster = convert_xml_raster(spikes_file_or_string, sample_rate); 
-  elseif hasext(spikes_file_or_string,'.json')
-    raster = tools.parse_json(spikes_file_or_string);
-  elseif hasext(spikes_file_or_string,'.nwb')
-    raster = read_NWB_raster(spikes_file_or_string);
-  else error('Unknown file format "%s", expected {.mat,.json,.xml}');
-  end
-  
+if exist(spikes_file,'file')
+  models.nerve_recording(inputs{:}, '-raster', spikes_file )
 else
-  %% Parse spikes_file_or_string
+  %% Parse string command
   
-  entries = regexp(spikes_file_or_string,'(flat|burst)[^\]]+[^\,;\s]+','match'); 
+  entries = regexp(spikes_string,'(flat|burst)[^\]]+[^\,;\s]+','match'); 
   
   if isempty(entries)
-    warning('no flat[], burst[], or drift[] entries provided to %s', mfilename)
+    warning('no flat[] or burst[] entries provided to %s', mfilename)
     entries = {'flat[0.2,2]'};
   end
   
@@ -76,47 +73,45 @@ else
   
   for ii = 1:numel(entries)
       
-    nmr_setting = models.nerve_recording('-list',entries{ii}); 
+    mnr_setting = models.nerve_recording('-list',entries{ii}); 
     my_c = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)','match'));
     if ~isempty(my_c) && ~any(isnan(my_c)), coherence = my_c; end
     my_r = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)'));
     if ~isempty(my_r) && ~any(isnan(my_r)), repeats = my_r; end
     
-    nmr_setting.coherence = coherence; 
-    nmr_setting.n_reps = repeats;
+    mnr_setting.coherence = coherence; 
+    mnr_setting.n_reps = repeats;
     
     input_args = regexp(entries{ii},'(?<=\[)[^\]]+','match','once');
     input_args = str2double(strsplit(input_args,{',',';',' '})); 
     switch(lower(entries{ii}(1:4)))
      case 'flat'
-       nmr_setting.spikerate = reshape(input_args, [], 1); 
+       mnr_setting.spikerate = reshape(input_args, [], 1); 
      case 'burs'
-         
-       input_args(end+1 : ceil(end/3)*3) = 0; 
-         
-       nmr_setting.name = 'gauss'; 
-         
-         error todo_b
-         
+               
+       mnr_setting.name = 'gauss';          
+       mnr_setting.spikerate = [input_args(1:3:end); input_args(2:3:end)]';
+       mnr_setting.frequency =  input_args(3:3:end)/sqrt(8*log(2)); 
+       mnr_setting.exponent = 1; 
+       mnr_setting.wave_path = 'burst';
+       mnr_setting.file_scheme = 'epoch_k%0.1f_w%0.1f_c%0.1f (%%d).mat';
+       mnr_setting.file_vector = @(ex,sr,fr,ch) [sr(2) fr ch];
     end
     
-    nmr_setting.wave_path = sprintf('%s_%02d', nmr_setting.wave_path, ii);
+    if isdeployed, fprintf('Progress: %0.1f%%\n', 5+90*(ii-1)/numel(entries)); end
     
-    models.nerve_recording(inputs{:}, '-settings', nmr_setting, '-no-par' )
+    mnr_setting.wave_path = sprintf('%s_%02d', mnr_setting.wave_path, ii);
+    models.nerve_recording(inputs{:}, '-settings', mnr_setting )
 
-    
-    
   end
   
 end
 
+if isdeployed, disp('Progress: 95%'); end
 
+merge_stimulation_epochs(inputs)
 
-
-
-
-disp('TODO: condense epochs into a single file to return to user')
-
+if isdeployed, disp('Progress: 100%'); end
 return
 
 
@@ -128,8 +123,17 @@ return
 %% generate expected file structure in tempdir
 function args = unpack_axons_file(filename) 
 
-
+fprintf('Loading %s ...\n', filename)
 load(filename,'axons','axon_models','nerve');
+
+if isempty(axons(end).fascicle)
+  disp('warning: buggy axons(4).fascicles')
+  n4 = numel(axons(4).fibre_diam)-1;
+  axons(4).axon_xy = axons(3).axon_xy(end-n4:end,:);
+  axons(4).fascicle = axons(3).fascicle(end-n4:end);
+  axons(3).axon_xy(end-n4:end,:) = []; 
+  axons(3).fascicle(end-n4:end) = []; 
+end
 
 model_names = unique({axons.axon_model});
 
@@ -254,6 +258,7 @@ function [pop,sam] = merge_populations(pop,axon_type)
 %% Convert v_extracellular to structure 
 function args = convert_eidors_file(filename)
 
+fprintf('Loading %s ...\n', filename)
 EM = load(filename); 
 % see https://en.wikipedia.org/wiki/Reciprocity_(electromagnetism)#Reciprocity_for_electrical_networks               
 
@@ -299,148 +304,87 @@ if exist(tools.file('in~\eidors'),'dir')
 end, mkdir(tools.file('in~\eidors')); 
 
 
-
 filename = tools.file('in~\eidors\sensitivity.mat'); 
+fprintf('Saving %s ...\n', filename)
+
 save(filename,'-struct','EM')
 args = {'-file', filename};
   
 return
 
-function raster = convert_xml_raster(filename, fs)
 
+function merge_stimulation_epochs(inputs)
 
-%%
-if ~exist('filename','var'), filename = 'test-raster.xml'; end
+list = dir('./output/waves/**/*.mat'); 
+p_ = @(x) [x.folder filesep x.name]; % path expander
 
-xml = tools.parse_xml(filename);  
-xml.filename = filename;
+load(inputs{4},'pop','nerve');
 
-%% x.Children().name representation
-the = @(x,n) x.Children(strncmpi({x.Children.Name},n,length(n)));
-attr_ = @(x,n) x.Attributes(strcmpi(n,{x.Attributes.Name})).Value;
-trim_ = @(x) x.Children(~contains({x.Children.Name},'#text'));
+data = struct;
+data.anatomy = nerve; 
+data.epoch_labels = {};
+data.population = []; 
+data.options = []; 
+data.time = []; 
+data.input_arguments = []; 
 
-xml.Children = trim_(xml); 
-
-info = the(xml,'config'); 
-info.Children = trim_(info);
-
-info.Data = struct; 
-info.Data.filename = filename;
-info.Data.syntax = xml.Name;
-
-for ii = 1:numel(info.Children)
-  val = attr_(info.Children(ii),'value'); 
-  if ~isnan(str2double(val)), val = str2double(val); end
-  info.Data.(attr_(info.Children(ii),'name')) = val; 
-end, info = info.Data; 
-
-epochs = the(xml,'s');
-
-if isempty(epochs), epochs = xml; end
-
-[epochs.Data] = deal([]); 
-
-%% Get spike-times
-
-for tt = 1:numel(epochs)
-
-    spk_time = []; 
-    spk_unit = []; 
-
-    spikes = the(epochs,'s');
-
-    for ii = 1:numel(spikes)    
-      spk_time = [spk_time; str2double(attr_(spikes(ii),'t'))]; %#ok<AGROW>
-      spk_unit = [spk_unit; str2double(attr_(spikes(ii),'u'))]; %#ok<AGROW>
+for ii = 1:numel(list)
+  
+  d = load(p_(list(ii)));
+  data.epoch_labels{ii,1} = list(ii).name(1:end-4);
+  
+  roi = (abs(d.time) <= max(d.time)-15);  
+  d.waves = tools.detrend_wave(d.waves,d.time,roi); 
+  d.waves = d.waves(roi,:,:,:);
+  d.time = d.time(roi);
+  
+  for ty = 1:numel(d.raster)
+     
+    if numel(data.population) < ty,
+       
+      this = struct; 
+      this.class = pop(ty).axon_type;
+      this.axon_info = pop(ty);      
+      
+      this.waves{1} = permute(d.waves(:,:,ty,:),[1 2 4 3]); 
+      this.spikes    = d.raster(ty);
+      
+      if isempty(data.population), data.population = this;
+      else data.population(ty,1) = this;
+      end
+    else
+      data.population(ty).waves{ii,1} = permute(d.waves(:,:,ty,:),[1 2 4 3]);
+      data.population(ty).spikes(ii,1) = d.raster(ty);
     end
-
-    units = the(epochs,'unit');
-
-    for ii = 1:numel(units)
-
-        uid = str2double(attr_(units(ii),'id'));    
-        t = textscan(units(ii).Children(1).Data,'%f');
-
-        spk_time = [spk_time; t{1}];       %#ok<AGROW>
-        spk_unit = [spk_unit; 0*t{1}+uid]; %#ok<AGROW>
-    end
-
-    ok = ~isnan(spk_time) & ~isnan(spk_unit); 
-    if ~all(ok)
-
-      warning('In %s, %d/%d spiketimes were corrupted.', ...
-                filename, sum(~ok), numel(ok))
-      spk_time = spk_time(ok); 
-      spk_unit = spk_unit(ok);
-    end
-
-
-    if isfield(info,'time_start') && isfield(info,'time_end')  
-         time = (info.time_start) : (1/fs) : (info.time_end);   
-    else time = floor(min(spk_time)) : (1/fs) : ceil(max(spk_time)); 
-    end
-
-    if isfield(info,'n_units'), nA = info.n_units;
-    elseif isfield(info,'n_axons'), nA = info.n_axons;
-    elseif isfield(info,'n_cells'), nA = info.n_cells;
-    elseif isfield(info,'n_spikes'), nA = info.n_spikes;
-    else nA = max(spk_unit); 
-    end
-
-    if isfield(info,'bin_dt')    
-         bin_x = min(time):(info.bin_dt):max(time);
-    else bin_x = min(time):(1):max(time); % default 1 ms bins
-    end, bin_y = hist(spk_time,bin_x);  %#ok<HIST>
-    bin_y = bin_y ./ mean(diff(bin_x)) / nA * 1000;
-
-    raster.spk_time = spk_time;
-    raster.spk_axon = spk_unit;
-    raster.spk_rate = bin_y;
-    raster.bin_time = bin_x; 
-    raster.bin_rate = []; % undefined
-    raster.pop_rate = numel(spk_time) / range(time) / nA * 1000;
-
-    raster.file_info = info; 
+  end
+  
+  if isempty(data.options)
+       data.options = d.options; 
+       data.time = d.time;
+       data.input_arguments = d.inputs;
+  else data.options = [data.options; d.options];
+  end
 end
-
-
-return
-
-
-function generate_NWB_raster(inputs)
-
-
-
-
-error here
-
-
-nwb = NwbFile( ...
-    'session_description', 'o2S2PARC simulation of nerve recording',...
-    'identifier', 'Mouse5_Day3', ...
-    'session_start_time', datetime(now,'ConvertFrom','datenum'), ...    
-    'general_session_id', 'session_1234', ... % optional
-        'ghjkl' )
-    
-    
-trials = types.core.TimeIntervals( ...
-    'colnames', {'start_time', 'stop_time', 'correct'}, ...
-    'description', 'trial data and properties', ...
-    'id', types.hdmf_common.ElementIdentifiers('data', 0:2), ...
-    'start_time', types.hdmf_common.VectorData('data', [.1, 1.5, 2.5], ...
-   	'description','start time of trial'), ...
-    'stop_time', types.hdmf_common.VectorData('data', [1., 2., 3.], ...
-   	'description','end of each trial'), ...
-    'correct', types.hdmf_common.VectorData('data', [false, true, false], ...
-   	'description', 'whether the trial was correct'))
     
 
+for ty = 1:numel(d.raster)
+    
+  data.population(ty).waves = cat(4,data.population(ty).waves{:});
+  
+  data.population(ty).waves = permute(data.population(ty).waves, [4 1 2 3]);
+end
+    
 
-    
-function data = r
-    error('TODO: understand how to read NWB files')
-    
+data.units.waves = 'micro volt';
+data.units.time = 'milli second';
+data.units.spikerate = 'impulse per second per axon';
+data.units.waves_dimensions = {'epoch','time','electrode','fascicle'};
+data.units.waves_configuration = 'monopolar recording';
+
+filename = tools.file('get','out~/nerve-recording (%d).mat','next');
+
+save(filename,'-struct','data')
+
     
     
     
