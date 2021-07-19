@@ -319,13 +319,14 @@ if evalin('caller','exist(''sensor'',''var'')') % might be preloaded.
   sensor = evalin('caller','elec_sensor');      % get from caller.
 else                                            % Generate if not. 
   sensor(e_id) = {[]}; % allocate cell array
+  this = fac_(f_id); 
   if opts.debug_thinlayer_idx % remove P_Fasc from interpolation
        idx = (strcmp(EM.model.object_name,sprintf('Fascicle%d',f_id)));
        idx = unique(EM.model.elems(EM.model.object_id{idx},:));
-  else idx = fac_(f_id).idx; 
+  else idx = this.idx; 
   end 
-  fok = ismember(fac_(f_id).idx,idx(:)); 
-  idx = fac_(f_id).idx(fok); 
+  fok = ismember(this.idx,idx(:)); 
+  idx = this.idx(fok); 
   
   sensor{e_id(1)} = scatteredInterpolant(z_(idx), y_(idx), x_(idx), ...
                                       fac_(f_id).pot(e_id(1), fok)', ...
