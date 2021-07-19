@@ -31,11 +31,11 @@ end
 %% get EIDORS file (either stim or sens)
 if any(request('eidors'))
   %%
-  eidors_file = tools.file('eidors~\');
   
   % model_functions accept eidors_file as a first argument
   if numel(user_args) > 0 && ischar(user_args{1})
-      eidors_file = user_args{1}; 
+       eidors_file = user_args{1};      
+  else eidors_file = 'eidors~\';
   end
 
   % models.function( ..., '-file', eidors_file ) also valid
