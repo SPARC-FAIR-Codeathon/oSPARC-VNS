@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3881475612" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="3045551482" file="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile.prj" location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording" name="compile" preferred-package-location="/home/unimelb.edu.au/ceiber/oSPARC-VNS/backend/module-nerve-recording/compile/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>simulate_nerve_recording</param.appname>
     <param.icon />
     <param.icons />
