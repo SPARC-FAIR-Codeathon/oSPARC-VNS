@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<spiketimes>
+  <configuration file="source.xml">
+    <parameter name="z_ref" value="0"/>
+    <parameter name="time_unit" value="ms"/>
+  </configuration>
+
+  <!--
+    The following is the most 'efficient' schema:
+    <epoch ...>    
+      <population id="..." ...>
+        <unit id="1">
+          -36.7667 -36.0667 -35.0000 -33.5333 ... 
+        </unit>
+        <unit id="2">
+        ...
+      </population>
+      <population id="..." ...>
+      ...
+    </epoch>
+    <epoch ...>    
+      <population id="..." ...>
+        <unit id="1">
+          ...
+
+    The following additional schemas are defined:
+
+    population_ID as attribute of each unit
+    <epoch ...>
+      <unit id=... [type="{1|2|3|4}"]>
+        -36.7667 -36.0667 -35.0000 -33.5333 ... 
+      </unit>
+    </epoch>
+    ... 
+
+    population_ID embedded in unit_id
+    <epoch ...>
+      <unit id="index.pop_id">
+        -36.7667 -36.0667 -35.0000 -33.5333 ... 
+      </unit>
+    </epoch>
+    ...
+
+    No explicit population_ID, units numbered continuously     
+    <epoch ...>
+      <unit id="index.pop_id">
+        -36.7667 -36.0667 -35.0000 -33.5333 ... 
+      </unit>
+    </epoch>
+
+    No grouping of spikes into units (also compatible with the above 2 pop_id embedding schemes)
+    <epoch>
+      <spike u=id t="-36.7667" [p="2"]/>
+      <spike u=id t="-36.0667" [p="2"]/>
+    </epoch>
+
+    The division of data into epochs is optional. 
+
+  -->
+
+
+  <spike u="9" t="-63.5333"/>
+  <spike u="12" t="-63.4000"/>
+  <spike u="10" t="-62.7000"/>
+  <spike u="9" t="-47.2333"/>
+  <spike u="4" t="-39.1667"/>
+  <spike u="2" t="-37.4333"/>
+
+
+  <unit id="12">  
+    -36.7667
+    -36.0667
+    -35.0000
+    -33.5333
+    -32.7667
+    -32.3667
+    -32.3333
+    -32.2333
+    -31.4667
+    -31.4333
+    -29.3667
+    -27.3333
+    -25.5667
+  </unit>
+  <unit id="16">
+     -7.1333
+     -2.5000
+     -2.2000
+     -0.4000
+     -0.0667
+      0.2333
+      1.8667
+      3.7667
+     24.2667
+     26.6667
+     29.1667
+     30.0667
+     30.3000
+     30.6667
+     30.8000
+     32.5667
+     32.7000
+   </unit>
+
+
+  <s u="9" t="47.2333"/>
+  <s u="4" t="39.1667"/>
+  <s u="2" t="37.4333"/>
+  <s u="13" t="39.1667"/>
+  <s u="1" t="37.4333"/>
+
+</spiketimes>
