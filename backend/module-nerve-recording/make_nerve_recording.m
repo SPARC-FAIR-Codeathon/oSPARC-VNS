@@ -30,8 +30,10 @@ end
 if nargin < 5 || isempty(sample_rate)    
   sample_rate = 30; % kHz
   fprintf('Arg 5 not set, using default sample rate: %g ks/s\n', sample_rate)
+elseif ischar(sample_rate), sample_rate = str2double(sample_rate); 
 end
 
+if isdeployed, warning('off','BIDSfile:notFound'), end
 
 named = @(v) strncmpi(v,varargin,length(v)); 
 tools.file('root',pwd); % set 'root' to this folder
@@ -50,7 +52,7 @@ if exist(tools.file('out~\waves'),'dir')
 end, mkdir(tools.file('out~\waves')); 
 
 inputs = [convert_eidors_file(fields_file) ... 
-          unpack_axons_file(axons_file)]; 
+          unpack_axons_file(axons_file), '-fs', sample_rate]; 
       
 if isdeployed, disp('Progress: 5%'); end
       
@@ -78,10 +80,10 @@ else
   for ii = 1:numel(entries)
       
     mnr_setting = models.nerve_recording('-list',entries{ii}); 
-    my_c = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)','match'));
+    my_c = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)?','match'));
     if ~isempty(my_c) && ~any(isnan(my_c)), coherence = my_c; end
-    my_r = str2double(regexp(entries{ii},'(?<=_c)\d+(\.\d+)'));
-    if ~isempty(my_r) && ~any(isnan(my_r)), repeats = my_r; end
+    my_r = str2double(regexp(entries{ii},'(?<=_r)\d+','match'));
+    if ~isempty(my_r) && ~any(isnan(my_r)), repeats = my_r(1); end
     
     mnr_setting.coherence = coherence; 
     mnr_setting.n_reps = repeats;
@@ -101,6 +103,9 @@ else
        mnr_setting.file_scheme = 'epoch_k%0.1f_w%0.1f_c%0.1f (%%d).mat';
        mnr_setting.file_vector = @(ex,sr,fr,ch) [sr(2) fr ch];
     end
+    
+    fprintf('Set intra-population coherence = %g\n', coherence);
+    fprintf('Set experimental replicates = %g\n', repeats);
     
     if isdeployed, fprintf('Progress: %0.1f%%\n', 5+90*(ii-1)/numel(entries)); end
     
@@ -387,6 +392,7 @@ data.units.waves_configuration = 'monopolar recording';
 
 filename = tools.file('get','out~/nerve-recording (%d).mat','next');
 
+fprintf('Combining waves files into %s\n', filename)
 save(filename,'-struct','data')
 
     

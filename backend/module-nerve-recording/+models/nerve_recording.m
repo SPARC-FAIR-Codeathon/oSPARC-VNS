@@ -122,6 +122,8 @@ if strcmpi(settings.name,'ECAP'), z_ref = 'E3'; else z_ref = 0; end
 if any(named('-coh')), cohere_settings = get_('-coh');
 else  cohere_settings = settings.coherence;
 end
+% if isdeployed, disp(cohere_settings); end
+
 
 population_frequency = settings.frequency;
 population_spikerate = settings.spikerate;
@@ -141,6 +143,7 @@ fs = 30; % 24.414; % kHz
 if any(named('-sample-rate')), fs = get_('-sample-rate'); 
 elseif any(named('-fs')),      fs = get_('-fs'); 
 end
+% if isdeployed, disp(fs); end
 
 time_span = 65;
 if any(named('-time')),  time_span = get_('-time'); 
@@ -149,6 +152,7 @@ end
 
 if any(named('-rep')), settings.n_reps = get_('-rep'); end
 n_rep = settings.n_reps;
+% if isdeployed, disp(n_rep); end
 
 if any(named('-raster')),
   input_raster = get_('-raster');
