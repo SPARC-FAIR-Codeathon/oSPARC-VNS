@@ -67,6 +67,13 @@ end
 mesh.insert_gmsh_fascicles('-setup',opts);
 nerve = mesh.insert_gmsh_fascicles('-info','-check-units');
 
+if isfield(nerve,'splines') && numel(nerve.splines) > 1
+    nsn = sprintf(', %s',nerve.splines.type); 
+    fprintf('selecting %s from {%s} in %s\n', nerve.splines(1).type, ...
+                                              nsn(3:end), opts.nerve.file)
+    nerve.splines = nerve.splines(1); 
+end
+
 if isdeployed, disp('Progress: 15%'), end
 
 output_file = tools.file('get','./output/axon-population (%d).mat','next');
@@ -85,9 +92,14 @@ while 1
                [aff_frac eff_frac] * n_unmyelinated ];
   switch lower(n_axon_unit)
     case 'per_mm2'
+      try
+        nF = size(nerve.splines.outline,3);
+      catch C, disp(nerve), disp(nerve.splines), 
+        error('Crashed at nerve.splines.outline')
+      end
       f_area_mm2 = arrayfun(@(f) polyarea(nerve.splines.outline(:,1,f), ...
                                           nerve.splines.outline(:,2,f)), ...
-                                   1:size(nerve.splines.outline,3));
+                                   1:nF);
       n_axons = round(n_axons * f_area_mm2);
     case 'count',  n_axons = round(n_axons);
     case 'ignore', n_axons = cellfun(@numel,{ax.axon_populations.fibre_diam});
