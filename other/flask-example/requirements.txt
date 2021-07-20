@@ -1,0 +1,70 @@
+
+
+# These have to be done in the order specified. I couldn't tell you why. 
+# For some reason mamua cannot be installed after environment creation
+
+$ conda create -n mamua-server -c mdap mamua -c conda-forge
+
+$ conda activate mamua-server
+$ conda install -c conda-forge dash
+$ conda install -c anaconda jinja2
+
+
+
+
+
+
+
+$ conda create --name mamua-server python=3.7
+
+$ conda activate mamua-server
+$ conda install -c conda-forge dash
+ 
+
+$ conda install -c mdap mamua
+
+
+
+
+
+
+
+(base) C:\Users\Calvin\Documents\Web-projects\mamua-server>python --version		Python 3.8.5
+(mamua-server) C:\Users\Calvin\Documents\Web-projects\mamua-server>python --version	Python 3.7.9
+(mamua-server) C:\Users\Calvin\Documents\Web-projects\mamua-server>conda install -c mdap mamua
+
+Collecting package metadata (current_repodata.json): done
+Solving environment: failed with initial frozen solve. Retrying with flexible solve.
+Solving environment: failed with repodata from current_repodata.json, will retry with next repodata source.
+Collecting package metadata (repodata.json): done
+Solving environment: failed with initial frozen solve. Retrying with flexible solve.
+Solving environment: \
+Found conflicts! Looking for incompatible packages.
+This can take several minutes.  Press CTRL-C to abort.
+Examining @/win-64::__archspec==1=x86_64:  20%|████████▍                                 | 1/5 [00:00<00:00, 16.71it/s]|failed
+
+UnsatisfiableError: The following specifications were found to be incompatible with each other:
+
+Output in format: Requested package -> Available versions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
