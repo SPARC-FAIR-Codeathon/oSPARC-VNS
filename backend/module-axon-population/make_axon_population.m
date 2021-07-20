@@ -100,7 +100,7 @@ while 1
       f_area_mm2 = arrayfun(@(f) polyarea(nerve.splines.outline(:,1,f), ...
                                           nerve.splines.outline(:,2,f)), ...
                                    1:nF);
-      n_axons = round(n_axons * f_area_mm2);
+      n_axons = round(n_axons * sum(f_area_mm2));
     case 'count',  n_axons = round(n_axons);
     case 'ignore', n_axons = cellfun(@numel,{ax.axon_populations.fibre_diam});
     otherwise warning('unknown n_axon_unit value %s', n_axon_unit)
