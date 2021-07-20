@@ -131,3 +131,4 @@ dmypy.json
 
 # EIDORS folder
 eidors
+/secrets.txt

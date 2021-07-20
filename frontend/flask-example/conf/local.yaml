@@ -1,7 +1,0 @@
-
-# Intended to get written to /conf/local.yaml: 
-
-local_calling_dir_path: C:\Users\Calvin\Documents\Web-projects\mamua-server
-local_data_dir: .\data\user\
-mrc_data_dir: ''
-spartan_data_dir: ''
