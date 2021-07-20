@@ -1,0 +1,5 @@
+{ "list":[
+  {"Name":"Rat Pelvic Nerve", "Value":"rat-pelvic-nerve.mat", "DOI":"10.1002/cne.902110102"},
+  {"Name":"Rat Cervical Vagus Nerve", "Value":"rat-cvn.mat", "DOI":"10.1016/0165-1838(96)00038-0" },
+  {"Name":"Human (12mo) Cervical Vagus Nerve", "Value":"human-12mo-cvn.mat",  "DOI":"10.1016/0022-510x(92)90016-e"}
+]}
