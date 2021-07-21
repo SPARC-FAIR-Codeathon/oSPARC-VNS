@@ -4,18 +4,18 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html #elements of wireframe
 import dash_bootstrap_components as dbc #grid
-#import plotly.graph_objs as go
+import plotly.graph_objs as go
 #import pandas as pd
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import plotly.express as px
 
-# import vns_graphics
-# import vns_callbacks
-# import user_io
+
+
 
 #%%
 
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP], 
+                external_scripts=["//daybrush.com/moveable/release/latest/dist/moveable.min.js"])
 
  
 #%%
@@ -24,7 +24,6 @@ device_family_dropdown = dcc.Dropdown(
         {'label': 'Device Family', 'value': 'Device Family'} #list comprehension for actual list
     ],
     placeholder="Select a Device Family"
-    
 )
 
 device_dropdown = dcc.Dropdown(
@@ -91,7 +90,9 @@ email_results = dbc.InputGroup(
 run_button = dbc.Button("RUN", size="lg", color = "danger", className="mr-1")
 
 
-layout_preview = dcc.Graph(figure=px.scatter(width=480, height=400))
+layout_preview = html.Img()
+
+# layout_preview = dcc.Graph(figure=px.scatter(width=480, height=400))
 
 
 interactive_plot = dcc.Graph(figure=px.scatter(width=220, height=200))
