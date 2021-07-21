@@ -1,0 +1,31 @@
+
+// Example JSON input file specifying electrode array - 14 July 2021
+
+{ "array": {
+    "Name": "MP-standard-cuff",
+    "https":"microprobes.com/products/peripheral-electrodes/nerve-cuff",
+    "Template": "~/input/cuff",
+    "ElectrodePositions": [[-2.5,0,0],[-1.5,0,0],
+                           [-0.5,0,0],[ 0.5,0,0], 
+                           [ 1.5,0,0],[ 2.5,0,0]], 
+    "ElectrodeDimensions": [0.25, 0.05, 5.0],
+    "ElectrodeTypeIndex": [1,1,1,1,1,1],     
+    "ElectrodeAngle":[0,0,0,0,0,0],
+    "ElectrodeKind":["circumference"],
+    "InsetDepth":0.05, 
+    "carrier":{ 
+        "cuff_IDy" : 2.0, 
+        "cuff_IDx" : 2.0,
+        "cuff_IDr" : 0.99,
+        "cuff_length" : 7.0,
+        "cuff_thickness" : 0.3
+    }
+  }, 
+  "mesh": {
+    "MeshLengthMax": 0.5,
+    "DomainSize":[12,12,6], // mm
+  }
+}
+
+
+
