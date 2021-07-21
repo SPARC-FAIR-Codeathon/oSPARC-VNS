@@ -1,0 +1,6 @@
+{ "list":[
+  {"Family":"FINE","Name":"composite FINE (8 electrodes)", 
+    "Value":"fine-c8.json", "DOI":"10.1088/2F1741-2552/2Faa6632"},  
+  {"Family":"FINE","Name":"composite FINE (6 electrodes)", 
+    "Value":"fine-c6.json", "DOI":"10.1088/2F1741-2552/2Faa6632"},  
+]}

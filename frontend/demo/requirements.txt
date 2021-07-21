@@ -1,0 +1,15 @@
+
+cd path/to/oSPARC-VNS/frontend
+
+conda create --name oSPARC-vns
+conda activate oSPARC-vns
+
+conda install -c conda-forge dash dash-core-components dash-bootstrap-components pandas matplotlib colorama
+pip install osparc 
+
+
+
+
+%%
+
+
