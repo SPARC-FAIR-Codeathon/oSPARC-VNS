@@ -12,6 +12,9 @@ import math
 import io
 import base64
 
+from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
+
 
 from statistics import median
 
@@ -54,8 +57,11 @@ def array_SVG(filename,nerve_json=None):
     if filename is None:
         return b''
 
-    with open(filename) as f:
-      array = parse(f)
+    if isinstance(filename, dict ): 
+      array = filename
+    else: 
+      with open(filename) as f: 
+        array = parse(f)
       
       
     array = array['array'] # get rid of {mesh}    
@@ -71,14 +77,14 @@ def array_SVG(filename,nerve_json=None):
     for u in range(0,len(array['ElectrodeTypeIndex'])):
         
         x,y,s = elec_xy(array,u) # get electrode
-        h = plt.plot(x,y,s)    
+        h = plt.plot(y,x,s)    
         
         if 'ElectrodeAngle' in array:
             if s == '--': va = 'top'
             else:         va = 'bottom'
         else:             va = 'center'    
         
-        plt.text((x[0]+x[1])/2, (y[0]+y[2])/2, 'E%d'%(u+1), 
+        plt.text((y[0]+y[2])/2, (x[0]+x[2])/2, 'E%d'%(u+1), 
                      color=h[0].get_color(),
                         ha='center', va=va, 
                         fontweight='bold',fontsize=14)
@@ -212,4 +218,15 @@ if __name__ == "__main__":
 def add_callbacks(app):
 
 
-    print('TODO add add_callbacks')    
+  # Simple update to electrode drop-down
+  @app.callback(Output("view-upper","src"), Input("device-json","data"))
+  def update_array(device):
+    if device is None: 
+      raise PreventUpdate
+    return encode(array_SVG(device))
+
+
+
+  print('TODO add NERVE callback')
+
+

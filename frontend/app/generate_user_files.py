@@ -22,7 +22,7 @@ def mk_nerve(rot=0,dx=0,dy=0,sz=12):
 
 
 
-def mk_mesh(rot=0,dx=0,dy=0,sz=12):
+def mk_array(rot=0,dx=0,dy=0,sz=12):
     
     s = {"nerve":{"xRotate":rot, 
                   "xMove":[dx,dy],

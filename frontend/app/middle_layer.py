@@ -10,7 +10,12 @@ from celery import Celery
 app = Celery('vnsModel',broker='redis://localhost')
 
 
-
 @app.task
 def add(x, y):
     return x + y
+
+
+
+import dash_core_components as dcc
+
+# I'm also putting database-emulating code here 

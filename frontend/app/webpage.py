@@ -41,26 +41,31 @@ app.layout = dbc.Row([
         dcc.Dropdown(id="device-family-dropdown", 
                      options = callbacks.list_deviceFamilies(), value = callbacks.get_default_dfamily(app), 
                      placeholder="Select a Device Family"), 
-        dcc.Dropdown(id="device-dropdown", options = None, value = None, 
-                     placeholder="Select a Device", enabled=False), 
+        dcc.Dropdown(id="device-dropdown", options = callbacks.list_devices(None), value = None, 
+                     placeholder="Select a Device", disabled=False),
         dcc.Upload(id="upload-device", className="uploada",
                    children=html.Div(
                      ["Drag and drop or click to",html.Br(),"select an array design to upload"]
                     )),
         dbc.Button("Save", id='btn-save-array', color="primary", outline=True,
-                       className="mr-1",n_clicks=0)
+                       className="mr-1",n_clicks=0),         
         ]) # CardBody: device
       ]), 
     dbc.Card([
       dbc.CardHeader("Electrode Configuration"),
       dbc.CardBody([
-        dcc.Dropdown(id="elec-dropdown", 
-                     options = [{'label':'E1','value':1}], value = 1, 
-                     clearable = False), 
+        dcc.Dropdown(id="elec-dropdown", options = [{'label':'E1','value':1}], 
+                     placeholder="Edit Electrode(s)", value = None, multi=True), 
+        html.Div([ dbc.Col([
+          dbc.Button("Add Electrode",id="add-elec", color="secondary", outline=True, className="mr-1",
+                                n_clicks=0, size="sm", style={'width':'45%'}), 
+          dbc.Button("Remove",id="rem-elec", color="secondary", outline=True, className="mr-1",
+                                n_clicks=0, size="sm", style={'width':'45%'})], style={'padding':'4px'}) 
+        ], style={'align-items':'center'}), 
         dbc.Row([
           dbc.Col([dbc.Input(id="elec-x",placeholder="X", type="number", min=0)]),
           dbc.Col([dbc.Input(id="elec-y",placeholder="Y", type="number", min=0)]),
-          dbc.Col([dbc.Input(id="elec-z",placeholder="Z", type="number", min=0)]) ]),         
+          dbc.Col([dbc.Input(id="elec-z",placeholder="Z", type="number", min=0)]) ]),
         dbc.Row([
           dbc.Col([dbc.Input(id="elec-w",placeholder="W", type="number", min=0)]), # "width" is parallel to nerve
           dbc.Col([dbc.Input(id="elec-h",placeholder="H", type="number", min=0)]), # "height" is perpendicular to nerve
@@ -73,14 +78,14 @@ app.layout = dbc.Row([
         dbc.Row([
           dbc.Col([dbc.Input(id="outer-x",placeholder="X", type="number", min=0)]),
           dbc.Col([dbc.Input(id="outer-y",placeholder="Y", type="number", min=0)]),
-          dbc.Col([dbc.Input(id="outer-l",placeholder="L", type="number", min=0)]) ])
+          dbc.Col([dbc.Input(id="outer-z",placeholder="L", type="number", min=0)]) ])
         ])  # CardBody: Electrode Carrier
-    ])], width=3), # LEft column
+    ])], width=3), # Left column
   #%%
   dbc.Col([
       html.Img(src=graphics.encode(graphics.array_SVG(None,None)),id="view-upper"), 
       html.Img(src=graphics.encode(graphics.nerve_SVG(None,None)),id="view-lower")
-    ], id="viewport", width=6 ), # middle 
+    ], id="viewport", width=6, style={'align-items':'center'}), # middle 
   #%%
   dbc.Col([
     dbc.Card([
@@ -116,12 +121,14 @@ app.layout = dbc.Row([
             ],className="mb-3"),
         dbc.Button("Run Model", id="btn-run", size="lg", color = "success", className="mr-1")
      ]) # CardBody: run control
-    ])], width=3) # Right column
+    ])], width=3), # Right column
+    dcc.Store(id="device-json", storage_type='local')
   ]) # layout
 
-graphics.add_callbacks(app)
 callbacks.add_callbacks(app)
+graphics.add_callbacks(app)
 
 #%%
 if __name__ == '__main__':
     app.run_server(debug=True)
+

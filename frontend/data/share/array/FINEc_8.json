@@ -6,7 +6,7 @@
                            [0,0,1.66],[0,0,-0.55], 
                            [0,0,-0.55],[0,0,1.66], 
                            [0,0,-2.77],[0,0,3.88]], 
-    "ElectrodeDimensions": [2.3 0.05 1.0],
+    "ElectrodeDimensions": [2.3,0.05,1.0],
     "ElectrodeTypeIndex": [1,1,1,1,1,1,1,1],     
     "ElectrodeAngle":[0,180,0,180,0,180,0,180],
     "InsetDepth":0.55, 
@@ -20,7 +20,7 @@
   }, 
   "mesh": {
     "MeshLengthMax": 0.5,
-    "DomainSize":[12,12,6], // mm
+    "DomainSize":[12,12,6]
   }
 }
 

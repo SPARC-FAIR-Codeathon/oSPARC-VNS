@@ -1,16 +1,18 @@
-
-// Example JSON input file specifying electrode array - 14 July 2021
-
 { "array": {
     "Name": "BionicsInstitute-DesignA-PayneETAL2020",
     "Template": "~/input/planar-array",
     "ElectrodePositions": [[-1.85,0,0],[-1.10,0,0],[1.10,0,0],[1.85,0,0]],
     "ElectrodeDimensions": [0.2,0.1,1.8],
-    "ElectrodeTypeIndex": [1,1,1,1],     
+    "ElectrodeTypeIndex": [1,1,1,1], 
+    "carrier": { 
+        "c_len": 4.8, 
+        "c_wid": 2.9,
+        "c_thickness": 0.8
+    }
   }, 
   "mesh": {
     "MeshLengthMax": 0.2,
-    "DomainSize":[6,6,3], // mm
+    "DomainSize": [6,6,3]
   }
 }
 

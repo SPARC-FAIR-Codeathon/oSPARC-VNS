@@ -20,7 +20,7 @@
   }, 
   "mesh": {
     "MeshLengthMax": 0.5,
-    "DomainSize":[12,12,6], // mm
+    "DomainSize":[12,12,6]
   }
 }
 
