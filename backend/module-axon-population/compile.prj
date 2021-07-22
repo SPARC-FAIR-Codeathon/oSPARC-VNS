@@ -3,7 +3,7 @@
     <param.appname>generate_axon_population</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>1.0</param.version>
+    <param.version>1.1</param.version>
     <param.authnamewatermark>Calvin Eiber</param.authnamewatermark>
     <param.email>ceiber@unimelb.edu.au</param.email>
     <param.company>University of Melbourne</param.company>
@@ -60,7 +60,6 @@ ${LD_LIBRARY_PATH}:MR/v95/runtime/glnxa64:MR/v95/bin/glnxa64:MR/v95/sys/os/glnxa
     <unset>
       <param.icon />
       <param.icons />
-      <param.version />
       <param.authnamewatermark />
       <param.email />
       <param.company />
