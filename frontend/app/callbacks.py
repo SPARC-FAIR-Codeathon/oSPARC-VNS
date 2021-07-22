@@ -1,280 +1,70 @@
-#%%
 
-import dash
 import dash_core_components as dcc
-import dash_html_components as html #elements of wireframe
-import dash_bootstrap_components as dbc #grid
-import plotly.graph_objs as go
-#import pandas as pd
-import matplotlib.pyplot as plt
-import plotly.express as px
+import dash_html_components as html
+import dash
 
-#%%
-
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
-
- 
-#%%
-device_family_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Device Family', 'value': 'Device Family'} #list comprehension for actual list
-    ],
-    placeholder="Select a Device Family"
-    
-)
-
-device_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Device', 'value': 'Device'}
-    ],
-    placeholder="Select a Device"
-)
-#%%
-
-Elec_one_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Electrode', 'value': 'Elect1'} #list comprehension for actual list
-    ],
-    placeholder="Select an Electrode"
-    
-) #is this upload
-
-carrier_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Carrier', 'value': 'Carr'} #list comprehension for actual list
-    ],
-    placeholder="Select an Carrier" 
-    
-)
-
-simulation_type_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Sim_type', 'value': 'Sim'} #list comprehension for actual list
-    ],
-    placeholder="Simuation Type"
-       
-)
-
-using_axons_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'using_axon', 'value': 'axon'} #list comprehension for actual list
-    ],
-    placeholder="Using Axon" 
-  
-)
-
-axon_upload = dcc.Upload(
-dcc.Upload( html.Div( [html.A('Upload Nerve XML file')] ), \
-                       style = {'borderStyle': 'dashed',\
-                                'borderWidth': '1px'})
-       )
-
-xml_upload = dcc.Upload(
-        html.Div([
-            html.A('Upload Nerve XML file')
-        ])        
-        )
+from dash.dependencies import Input, Output
+import json
 
 
-email_results = dbc.InputGroup(
-            [
-                dbc.InputGroupAddon("Email", addon_type="prepend"),
-                dbc.Input(placeholder="Type email"),
-            ],
-            className="mb-3",
-        )
+def parse(text):
+    try:
+        return json.load(text)
+    except ValueError as e:
+        print('invalid json: %s' % e)
+        return None # or: raise
 
-run_button = dbc.Button("RUN", size="lg", color = "danger", className="mr-1")
+def list_devices():
 
+    with open(r'../data/share/array/index.json') as f:
+      array = parse(f)
 
-layout_preview = dcc.Graph(figure=px.scatter(width=480, height=400))
-
-
-interactive_plot = dcc.Graph(figure=px.scatter(width=220, height=200))
-
-
-plot_preview = dcc.Graph(figure=px.scatter(width=220, height=200))
-
-#%%
-#get card elements
-#1st ROW
-#card containing device family, device
-First_column = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    device_family_dropdown, device_dropdown
-                                    ]) 
-                                ])
-                            ),\
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    Elec_one_dropdown
-                                    ]) 
-                                ])
-                            ),\
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dbc.Row(
-                                        [
-                                           dbc.Col([dbc.Input(placeholder="X", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="Y", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="Z", type="text")])
-                                        ])
-                        ])
-                    ])
-                    ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dbc.Row(
-                                        [
-                                           dbc.Col([dbc.Input(placeholder="L", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="W", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="D", type="text")])
-                                        ])
-                        ])
-                    ])
-                    ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    carrier_dropdown
-                                    ]) 
-                                ])
-                            ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dbc.Row(
-                                        [
-                                           dbc.Col([dbc.Input(placeholder="L", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="W", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="D", type="text")])
-                                        ])
-                        ])
-                    ])
-                    ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dcc.Upload( html.Div( [html.A('Upload Nerve XML file')] ), style = {'borderStyle': 'dashed',\
-                                                                                                        'borderWidth': '1px'})
-                                    ]) 
-                                ])
-                            )  
-
-])
-
-#%%
-#LAST COLUMN
-Last_column = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    simulation_type_dropdown
-                                    ]) 
-                                ])
-                            ),\
-
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    using_axons_dropdown, axon_upload
-                                    ]) 
-                                ])
-                            ), \
-
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    email_results
-                                    ]) 
-                                ])
-                            ), \
-
-                    html.Br(), \
-                    html.Br(), \
-                    
-                    html.Div([run_button]) 
-                                
-
-    
+    print(array)
+    return [{"label":"D1","value":"filename"}]
 
 
-])
+def list_nerveClasses():
 
+    with open(r'../data/share/axon/index.json') as f:
+      array = parse(f)
 
-#%%
-layout_preview = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    layout_preview
-                                    ]) 
-                                ])
-                            ),
-                        ])
-
-int_preview = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    interactive_plot
-                                    ]) 
-                                ])
-                            ),
-                        ])
-
-plot_preview = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    plot_preview
-                                    ]) 
-                                ])
-                            ),
-                        ])
+    print(array)
+    return [{"label":"Rat Vagus, Cervical","value":"rat-cvn"}]
 
 
 
-#%%
+# default value (user/session-based)
+def db_query(tag,table='USER'):
+    print('TODO: query column {} from table {}'.format(tag,table))
+
+# what device family did the user last select
+def get_default_dfamily(app):
+
+    db_query('dfamily','DEFAULTS')
+    return None
+
+# what nerve class did the user last select
+def get_default_nerveClass(app):
+    db_query('nerveclass','DEFAULTS')
+    return None
+
+# what nerve class did the user last select
+def get_default_runMode(app):
+    db_query('runmode','DEFAULTS')
+    return 'full'
+
+# what is user's email?
+def get_default_email(app):
+    db_query('email','USER')
+    return None
 
 
 
-#%%   
-layout = html.Div([
-            dbc.Card(
-            dbc.CardBody([
-    
-                dbc.Row(
-                        [   
-                            dbc.Col([First_column], width= 3), \
-                            dbc.Col(dbc.Card(
-                                    dbc.CardBody(
-                                            dbc.Col(
-                                                    [dbc.Row([
-                                                            layout_preview,                                         
-                                                            dbc.Col([int_preview], width = "auto"), 
-                                                            dbc.Col([plot_preview], width = "auto")
-                                                            ])], width = "auto"                              
-                                                   ))
-                                             ), width = 6),\
-                            dbc.Col([Last_column], width= 3)
-                            
-                        ], justify = "between", form = True, 
-                    no_gutters=True)
-                ])
-            )
-        ])
+def add_callbacks(app):
 
-#%%
-app.layout = layout
-if __name__ == '__main__':
-    app.run_server(debug=True)
+
+
+    print('TODO add add_callbacks')
+
+
+

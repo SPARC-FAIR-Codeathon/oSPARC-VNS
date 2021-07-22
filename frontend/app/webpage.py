@@ -1,285 +1,123 @@
 #%%
 
+from flask import Flask, send_from_directory
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html #elements of wireframe
 import dash_bootstrap_components as dbc #grid
 import plotly.graph_objs as go
 #import pandas as pd
-import matplotlib.pyplot as plt
-import plotly.express as px
 
+import callbacks
+import graphics
 
+#%%
+# Normally, Dash creates its own Flask server internally. By creating our own,
+# we can create a route for downloading files directly:
+server = Flask(__name__)
+app = dash.Dash(server=server, external_stylesheets=[dbc.themes.BOOTSTRAP])
+# ,             external_scripts=["//daybrush.com/moveable/release/latest/dist/moveable.min.js"])
 
 
 #%%
-
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP], 
-                external_scripts=["//daybrush.com/moveable/release/latest/dist/moveable.min.js"])
-
- 
-#%%
-device_family_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Device Family', 'value': 'Device Family'} #list comprehension for actual list
-    ],
-    placeholder="Select a Device Family"
-)
-
-device_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Device', 'value': 'Device'}
-    ],
-    placeholder="Select a Device"
-)
-#%%
-
-Elec_one_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Electrode', 'value': 'Elect1'} #list comprehension for actual list
-    ],
-    placeholder="Select an Electrode"
-    
-) #is this upload
-
-carrier_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Carrier', 'value': 'Carr'} #list comprehension for actual list
-    ],
-    placeholder="Select an Carrier" 
-    
-)
-
-simulation_type_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'Sim_type', 'value': 'Sim'} #list comprehension for actual list
-    ],
-    placeholder="Simuation Type"
-       
-)
-
-using_axons_dropdown = dcc.Dropdown(
-    options=[
-        {'label': 'using_axon', 'value': 'axon'} #list comprehension for actual list
-    ],
-    placeholder="Using Axon" 
-  
-)
-
-axon_upload = dcc.Upload(
-dcc.Upload( html.Div( [html.A('Upload Nerve XML file')] ), \
-                       style = {'borderStyle': 'dashed',\
-                                'borderWidth': '1px'})
-       )
-
-xml_upload = dcc.Upload(
-        html.Div([
-            html.A('Upload Nerve XML file')
-        ])        
-        )
+# Define path so that we can serve downloads 
+@server.route("/download/<path:path>")
+def download(path):
+    """Serve a file from the upload directory."""
+    return send_from_directory(UPLOAD_DIRECTORY, path, as_attachment=True)
 
 
-email_results = dbc.InputGroup(
-            [
-                dbc.InputGroupAddon("Email", addon_type="prepend"),
-                dbc.Input(placeholder="Type email"),
-            ],
-            className="mb-3",
-        )
+#%% 
 
-run_button = dbc.Button("RUN", size="lg", color = "danger", className="mr-1")
+# I've reorganised this into a condensed form so we can see more of it in a single screen. Excessive whitespace is an anti-pattern.
 
+# first_col is the array device controls 
+app.layout = dbc.Row([
+  dbc.Col([
+    dbc.Card([ 
+      dbc.CardHeader("Select device"),
+      dbc.CardBody([
+        dcc.Dropdown(id="device-family-dropdown", 
+                     options = callbacks.list_devices(), value = callbacks.get_default_dfamily(app), 
+                     placeholder="Select a Device Family"), 
+        dcc.Dropdown(id="device-dropdown", 
+                     options = [{'label':'...','value':0}], value = None, 
+                     placeholder="Select a Device Family"), 
+        dcc.Upload(id="upload-device", className="uploada",
+                   children=html.Div(
+                     ["Drag and drop or click to",html.Br(),"select an array design to upload"]
+                    )),
+        dbc.Button("Save", id='btn-save-array', color="primary", outline=True,
+                       className="mr-1",n_clicks=0)
+        ]) # CardBody: device
+      ]), 
+    dbc.Card([
+      dbc.CardHeader("Electrode Configuration"),
+      dbc.CardBody([
+        dcc.Dropdown(id="elec-dropdown", 
+                     options = [{'label':'E1','value':1}], value = 1, 
+                     clearable = False), 
+        dbc.Row([
+          dbc.Col([dbc.Input(id="elec-x",placeholder="X", type="number", min=0)]),
+          dbc.Col([dbc.Input(id="elec-y",placeholder="Y", type="number", min=0)]),
+          dbc.Col([dbc.Input(id="elec-z",placeholder="Z", type="number", min=0)]) ]),         
+        dbc.Row([
+          dbc.Col([dbc.Input(id="elec-w",placeholder="W", type="number", min=0)]), # "width" is parallel to nerve
+          dbc.Col([dbc.Input(id="elec-h",placeholder="H", type="number", min=0)]), # "height" is perpendicular to nerve
+          dbc.Col([dbc.Input(id="elec-d",placeholder="D", type="number")       ]) ])
+        ])  # CardBody: Electrode Configuration
+      ]),
+    dbc.Card([
+      dbc.CardHeader("Electrode Carrier"),
+      dbc.CardBody([
+        dbc.Row([
+          dbc.Col([dbc.Input(id="outer-x",placeholder="X", type="number", min=0)]),
+          dbc.Col([dbc.Input(id="outer-y",placeholder="Y", type="number", min=0)]),
+          dbc.Col([dbc.Input(id="outer-l",placeholder="L", type="number", min=0)]) ])
+        ])  # CardBody: Electrode Carrier
+    ])], width=3), # LEft column
+  #%%
+  dbc.Col([
+      html.Img(src=graphics.encode(graphics.array_SVG(None,None)),id="view-upper"), 
+      html.Img(src=graphics.encode(graphics.nerve_SVG(None,None)),id="view-lower")
+    ], id="viewport", width=6 ), # middle 
+  #%%
+  dbc.Col([
+    dbc.Card([
+      dbc.CardHeader("Select Nerve Anatomy"),
+      dbc.CardBody([
+        dcc.Upload(id="upload-nerve", className="uploada",
+                   children=html.Div(["Drag and drop or click to",html.Br(),"select a nerve anatomy (MBF-XML) file"])),
+        html.Div([dcc.Slider(id="nerve-x",min=-1000,max=1000,step=10,value=0)],style={'height':'30px'}),
+        html.Div([dcc.Slider(id="nerve-y",min=-1000,max=1000,step=10,value=0)],style={'height':'30px'}),
+        html.Div([dcc.Slider(id="nerve-r",min=-360,max=360,step=5,value=0)],style={'height':'30px'}),
+        dbc.Button("Save Position", id='btn-save-nerve', color="primary", outline=True,
+                       className="mr-1",n_clicks=0),
+        dcc.Dropdown(id="nerve-dropdown", 
+                     options = callbacks.list_nerveClasses(), value = callbacks.get_default_nerveClass(app))
+      ]) # CardBody: Nerve Configuration
+    ]), 
+    dbc.Card([
+      dbc.CardHeader("Run Controls"),
+      dbc.CardBody([
+        dcc.Dropdown(id="run-mode-dropdown", 
+                     options = [{'label':'Nerve Recording','value':'full'}, 
+                                {'label':'Fields only (faster)','value':'fast'}], value = callbacks.get_default_runMode(app), 
+                     clearable = False), 
+        html.Div("If you would like your results emailed to you, please enter your email below:"),
+        dbc.InputGroup([
+          dbc.InputGroupAddon("Email", addon_type="prepend"),
+          dbc.Input(id="user-email",value=callbacks.get_default_email(app),type="email",placeholder="(optional)"),
+            ],className="mb-3"),
+        dbc.Button("Run Model", id="btn-run", size="lg", color = "danger", className="mr-1")
+     ]) # CardBody: run control
+    ])], width=3) # Right column
+  ]) # layout
 
-layout_preview = html.Img()
-
-# layout_preview = dcc.Graph(figure=px.scatter(width=480, height=400))
-
-
-interactive_plot = dcc.Graph(figure=px.scatter(width=220, height=200))
-
-
-plot_preview = dcc.Graph(figure=px.scatter(width=220, height=200))
-
-#%%
-#get card elements
-#1st ROW
-#card containing device family, device
-First_column = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    device_family_dropdown, device_dropdown
-                                    ]) 
-                                ])
-                            ),\
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    Elec_one_dropdown
-                                    ]) 
-                                ])
-                            ),\
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dbc.Row(
-                                        [
-                                           dbc.Col([dbc.Input(placeholder="X", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="Y", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="Z", type="text")])
-                                        ])
-                        ])
-                    ])
-                    ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dbc.Row(
-                                        [
-                                           dbc.Col([dbc.Input(placeholder="L", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="W", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="D", type="text")])
-                                        ])
-                        ])
-                    ])
-                    ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    carrier_dropdown
-                                    ]) 
-                                ])
-                            ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dbc.Row(
-                                        [
-                                           dbc.Col([dbc.Input(placeholder="L", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="W", type="text")]),\
-                                           dbc.Col([dbc.Input(placeholder="D", type="text")])
-                                        ])
-                        ])
-                    ])
-                    ),\
-
-                   dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    dcc.Upload( html.Div( [html.A('Upload Nerve XML file')] ), style = {'borderStyle': 'dashed',\
-                                                                                                        'borderWidth': '1px'})
-                                    ]) 
-                                ])
-                            )  
-
-])
+graphics.add_callbacks(app)
+callbacks.add_callbacks(app)
 
 #%%
-#LAST COLUMN
-Last_column = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    simulation_type_dropdown
-                                    ]) 
-                                ])
-                            ),\
-
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    using_axons_dropdown, axon_upload
-                                    ]) 
-                                ])
-                            ), \
-
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    email_results
-                                    ]) 
-                                ])
-                            ), \
-
-                    html.Br(), \
-                    html.Br(), \
-                    
-                    html.Div([run_button]) 
-                                
-
-    
-
-
-])
-
-
-#%%
-layout_preview = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    layout_preview
-                                    ]) 
-                                ])
-                            ),
-                        ])
-
-int_preview = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    interactive_plot
-                                    ]) 
-                                ])
-                            ),
-                        ])
-
-plot_preview = html.Div([
-                    dbc.Card(
-                            dbc.CardBody([
-                                    html.Div([
-                                    plot_preview
-                                    ]) 
-                                ])
-                            ),
-                        ])
-
-
-
-#%%
-
-
-
-#%%   
-layout = html.Div([
-            dbc.Card(
-            dbc.CardBody([
-    
-                dbc.Row(
-                        [   
-                            dbc.Col([First_column], width= 3), \
-                            dbc.Col(dbc.Card(
-                                    dbc.CardBody(
-                                            dbc.Col(
-                                                    [dbc.Row([
-                                                            layout_preview,                                         
-                                                            dbc.Col([int_preview], width = "auto"), 
-                                                            dbc.Col([plot_preview], width = "auto")
-                                                            ])], width = "auto"                              
-                                                   ))
-                                             ), width = 6),\
-                            dbc.Col([Last_column], width= 3)
-                            
-                        ], justify = "between", form = True, 
-                    no_gutters=True)
-                ])
-            )
-        ])
-
-#%%
-app.layout = layout
 if __name__ == '__main__':
     app.run_server(debug=True)

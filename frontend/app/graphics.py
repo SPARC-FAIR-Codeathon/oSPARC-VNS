@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import xml.etree.ElementTree as et
 import math
 import io
+import base64
+
 
 from statistics import median
 
@@ -20,6 +22,9 @@ def parse(text):
         print('invalid json: %s' % e)
         return None # or: raise
 
+def encode(svg_string):
+    encoded = base64.b64encode(svg_string) 
+    return 'data:image/svg+xml;base64,{}'.format(encoded.decode()) 
 
 # Electrode view 1  
 def elec_xy(d, eid):
@@ -46,6 +51,9 @@ def elec_xy(d, eid):
 
 def array_SVG(filename,nerve_json=None):
     
+    if filename is None:
+        return b''
+
     with open(filename) as f:
       array = parse(f)
       
@@ -117,6 +125,9 @@ def find_centroid(c):
 
 
 def nerve_SVG(xml_file, json_file = None):
+
+    if xml_file is None:
+        return b''
 
     c = get_contours(xml_file) # load data
     
@@ -190,3 +201,15 @@ if __name__ == "__main__":
     
     
     # print(array_SVG('misc/C-FINE.json'))
+
+
+
+
+
+
+
+
+def add_callbacks(app):
+
+
+    print('TODO add add_callbacks')    
