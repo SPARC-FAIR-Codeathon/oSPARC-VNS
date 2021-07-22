@@ -127,6 +127,7 @@ app.layout = dbc.Row([
 
 callbacks.add_callbacks(app)
 graphics.add_callbacks(app)
+# middle_layer.add_callbacks(app)
 
 #%%
 if __name__ == '__main__':

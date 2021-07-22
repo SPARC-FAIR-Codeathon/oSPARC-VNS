@@ -6,6 +6,8 @@ import dash
 from urllib.parse import quote as urlquote
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
+import functools 
+
 import json
 import os
 import math
@@ -95,9 +97,10 @@ def get_default_email(app):
 #%%
 # 
 # Load device from filesystem 
+@functools.lru_cache(maxsize=32)
+def get_device_json(name,family):
 
-def get_device_json(name,is_user,this):
-
+    is_user = (family == 'user')
     print("Loading '{}'".format(name))
 
     if is_user:
@@ -114,6 +117,7 @@ def get_device_json(name,is_user,this):
       with open(file,'rt') as f:
         this = parse(f)
 
+    this['ui'] = {'device',name,'family',family}
     return this
 
 
@@ -138,8 +142,9 @@ def add_callbacks(app):
     if not opts: return default, None, True
     return opts, opts[0]['value'], False
 
-
-
+  #
+  # MAJOR callback: update device representation based on user IO 
+  #  
   @app.callback(Output("device-json","data"),
                 [Input("device-dropdown","value"),
                  Input("add-elec","n_clicks"),
@@ -162,7 +167,7 @@ def add_callbacks(app):
     was_loaded = False
     if device is None: raise PreventUpdate
     if this is None: 
-      this = get_device_json(device,family=='user',this)
+      this = get_device_json(device,family)
       was_loaded = True
 
     clicked = which_input()
@@ -170,7 +175,8 @@ def add_callbacks(app):
     print("update_device: "+clicked)
 
     if clicked=='device-dropdown' and not was_loaded: # got a new device?
-        this = get_device_json(device,family=='user',this)
+        this = get_device_json(device,family)
+        was_loaded = True
         return this
 
     these = lambda v : [v[u] for u in range(0,len(v)) if u in e_select ]
@@ -192,7 +198,7 @@ def add_callbacks(app):
         this['array']['ElectrodeTypeIndex'].add(eti)
         return this
 
-    if clicked=='rem-elec': 
+    elif clicked=='rem-elec': 
       if not e_select: raise PreventUpdate
 
       this['array']['ElectrodePositions'] = those(this['array']['ElectrodePositions'])
@@ -202,13 +208,13 @@ def add_callbacks(app):
         this['array']['ElectrodeAngle'] = those(this['array']['ElectrodeAngle'])
         return this
 
-    if clicked=='elec-x' or clicked=='elec-z' or clicked=='elec-z':
+    elif clicked=='elec-x' or clicked=='elec-z' or clicked=='elec-z':
       if not e_select: raise PreventUpdate
       s = e_select[0]
       this['array']['ElectrodePositions'][s] = [ex,ey,ez]
       return this
 
-    if clicked=='elec-w' or clicked=='elec-h' or clicked=='elec-d':
+    elif clicked=='elec-w' or clicked=='elec-h' or clicked=='elec-d':
       
       eti = this['array']['ElectrodeTypeIndex']
 
@@ -245,7 +251,7 @@ def add_callbacks(app):
         # Ignoring ElectrodeKind and InsetDepth here 
         return this 
 
-    if clicked=="outer-x" or clicked=="outer-y" or clicked=="outer-z":
+    elif clicked=="outer-x" or clicked=="outer-y" or clicked=="outer-z":
 
         if "c_thickness" in this['array']['carrier']:
 
@@ -291,4 +297,66 @@ def add_callbacks(app):
     return [0],these
 
 
+
+  @app.callback([Output("elec-x","value"),
+                 Output("elec-y","value"),
+                 Output("elec-z","value"),
+                 Output("elec-w","value"),
+                 Output("elec-h","value"),
+                 Output("elec-d","value"),
+                 Output("outer-x","value"),
+                 Output("outer-y","value"),
+                 Output("outer-z","value")],
+                [Input("device-dropdown","value"),
+                 Input("elec-dropdown","value"),
+                 State("device-json","data"),
+                 State("device-family-dropdown","value"),
+                 State("elec-x","value"),
+                 State("elec-y","value"),
+                 State("elec-z","value"),
+                 State("elec-w","value"),
+                 State("elec-h","value"),
+                 State("elec-d","value"),
+                 State("outer-x","value"),
+                 State("outer-y","value"),
+                 State("outer-z","value") ])
+  def update_elec_select(device,e_select,this,family,ex,ey,ez,ew,eh,ed,cx,cy,cz):
+
+    if device is None: raise PreventUpdate
+    
+    if this is None: 
+      this = get_device_json(device,family)
+      # using memoise to reduce waste here 
+    elif "ui" not in this:
+      this = get_device_json(device,family)
+
+    print("untangle outputs")
+    print(this['ui'])
+    print('device: '+device+', family: '+family)
+
+
+
+
+
+    return ex,ey,ez,ew,eh,ed,cx,cy,cz
+
+    pass
+
+
+
+
   print('Inserted basic callbacks')
+
+
+
+
+
+
+
+
+#%%
+if __name__ == '__main__':
+
+  import webpage
+  webpage.app.run_server(debug=True)
+
