@@ -39,11 +39,10 @@ app.layout = dbc.Row([
       dbc.CardHeader("Select device"),
       dbc.CardBody([
         dcc.Dropdown(id="device-family-dropdown", 
-                     options = callbacks.list_devices(), value = callbacks.get_default_dfamily(app), 
+                     options = callbacks.list_deviceFamilies(), value = callbacks.get_default_dfamily(app), 
                      placeholder="Select a Device Family"), 
-        dcc.Dropdown(id="device-dropdown", 
-                     options = [{'label':'...','value':0}], value = None, 
-                     placeholder="Select a Device Family"), 
+        dcc.Dropdown(id="device-dropdown", options = None, value = None, 
+                     placeholder="Select a Device", enabled=False), 
         dcc.Upload(id="upload-device", className="uploada",
                    children=html.Div(
                      ["Drag and drop or click to",html.Br(),"select an array design to upload"]
@@ -103,14 +102,19 @@ app.layout = dbc.Row([
       dbc.CardBody([
         dcc.Dropdown(id="run-mode-dropdown", 
                      options = [{'label':'Nerve Recording','value':'full'}, 
-                                {'label':'Fields only (faster)','value':'fast'}], value = callbacks.get_default_runMode(app), 
+                                {'label':'Fields only (faster)','value':'fast'}], 
+                     value = callbacks.get_default_runMode(app), 
                      clearable = False), 
+        html.Div([
+            html.Div("simulated spike-rate (imp/s/axon):"),
+            dbc.Input(id="spike-rate",placeholder="flat[0.2,2]", type="text")],
+            id="div-spike-rate",style={"display":"block"}),
         html.Div("If you would like your results emailed to you, please enter your email below:"),
         dbc.InputGroup([
           dbc.InputGroupAddon("Email", addon_type="prepend"),
           dbc.Input(id="user-email",value=callbacks.get_default_email(app),type="email",placeholder="(optional)"),
             ],className="mb-3"),
-        dbc.Button("Run Model", id="btn-run", size="lg", color = "danger", className="mr-1")
+        dbc.Button("Run Model", id="btn-run", size="lg", color = "success", className="mr-1")
      ]) # CardBody: run control
     ])], width=3) # Right column
   ]) # layout

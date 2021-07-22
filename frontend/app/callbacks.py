@@ -14,21 +14,30 @@ def parse(text):
         print('invalid json: %s' % e)
         return None # or: raise
 
-def list_devices():
-
+def list_deviceFamilies():
     with open(r'../data/share/array/index.json') as f:
-      array = parse(f)
+      arrays = parse(f)
 
-    print(array)
-    return [{"label":"D1","value":"filename"}]
+    dflist = set([a['family'] for a in arrays['list']])
+    # todo append my-devices    
+    return([{"label":a,"value":a} for a in dflist])
 
+def list_devices(family):
+    with open(r'../data/share/array/index.json') as f:
+      arrays = parse(f)
+
+    if family is None: return []
+
+    return [{"label":a['name'],"value":a['file']} 
+            for a in arrays['list'] if a['family'] is family]
+    
 
 def list_nerveClasses():
 
     with open(r'../data/share/axon/index.json') as f:
-      array = parse(f)
+      axons = parse(f)
 
-    print(array)
+    print(axons)
     return [{"label":"Rat Vagus, Cervical","value":"rat-cvn"}]
 
 
@@ -62,9 +71,21 @@ def get_default_email(app):
 
 def add_callbacks(app):
 
+  print('TODO add add_callbacks')
 
+  @app.callback( Output("div-spike-rate","style"), Input("run-mode-dropdown","value") )
+  def toggle_show_spikerate(run_mode):        
+    print('toggle_show_sr')
+    if run_mode == 'full':
+      return {'display':'block'}
+    else: 
+      return {'display':'none'}
 
-    print('TODO add add_callbacks')
-
-
-
+  @app.callback( [Output("device-dropdown","options"), 
+                  Output("device-dropdown","value"), 
+                  Output("device-dropdown","enabled")], 
+                  Input("device-family-dropdown","value") )
+  def update_device_dropdown(family):
+    opts = list_devices(family)
+    if opts is None: return None, None, False
+    return opts, opts[0]['value'], True

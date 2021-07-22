@@ -1,10 +1,6 @@
 { "list":[
-  {"Family":"FINE","Name":"composite FINE (8 electrodes)", 
-    "Value":"fine-c8.json", "DOI":"10.1088/2F1741-2552/2Faa6632"},  
-  {"Family":"FINE","Name":"composite FINE (6 electrodes)", 
-    "Value":"fine-c6.json", "DOI":"10.1088/2F1741-2552/2Faa6632"},  
-  {"Family":"FINE","Name":"composite FINE (8 electrodes)", 
-    "Value":"fine-c8.json", "DOI":"10.1088/2F1741-2552/2Faa6632"},  
-  {"Family":"FINE","Name":"composite FINE (6 electrodes)", 
-    "Value":"fine-c6.json", "DOI":"10.1088/2F1741-2552/2Faa6632"}
+  {"family":"MicroProbes","file":"MPcuff_2_6","name":"standard cuff (ID 2mm, 6 electrodes)"},  
+  {"family":"FINE","file":"FINEc_8","name":"FINE-C (1x10mm, 8 electrodes)"}, 
+  {"family":"Bionics Institute","file":"BI-cuff_VN6","name":"Rat Vagus Cuff (Payne 2019)"}, 
+  {"family":"Bionics Institute","file":"BI-flat_A4","name":"Rat Pelvic Planar (Payne 2020)"}, 
 ]}
