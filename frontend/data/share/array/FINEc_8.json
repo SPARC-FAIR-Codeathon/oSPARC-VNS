@@ -11,11 +11,11 @@
     "ElectrodeAngle":[0,180,0,180,0,180,0,180],
     "InsetDepth":0.55, 
     "carrier":{ 
-        "cuff_IDy" : 1.0, 
-        "cuff_IDx" : 10.0,
-        "cuff_IDr" : 0.2,
-        "cuff_length" : 7.0,
-        "cuff_thickness" : 0.5
+        "cuff_IDy": 1.0,
+        "cuff_IDx": 10.0,
+        "cuff_IDr": 0.2,
+        "cuff_length": 7.0,
+        "cuff_thickness": 0.5
     }
   }, 
   "mesh": {

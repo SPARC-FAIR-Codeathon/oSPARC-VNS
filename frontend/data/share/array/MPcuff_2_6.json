@@ -11,11 +11,11 @@
     "ElectrodeKind":["circumference"],
     "InsetDepth":0.05, 
     "carrier":{ 
-        "cuff_IDy" : 2.0, 
-        "cuff_IDx" : 2.0,
-        "cuff_IDr" : 0.99,
-        "cuff_length" : 7.0,
-        "cuff_thickness" : 0.3
+        "cuff_IDy": 2.0,
+        "cuff_IDx": 2.0,
+        "cuff_IDr": 0.99,
+        "cuff_length": 7.0,
+        "cuff_thickness": 0.3
     }
   }, 
   "mesh": {

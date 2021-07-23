@@ -63,22 +63,22 @@ app.layout = dbc.Row([
                                 n_clicks=0, size="sm", style={'width':'45%'})], style={'padding':'4px'}) 
         ], style={'align-items':'center'}), 
         dbc.Row([
-          dbc.Col([dbc.Input(id="elec-x",placeholder="X", type="number", min=0)]),
-          dbc.Col([dbc.Input(id="elec-y",placeholder="Y", type="number", min=0)]),
-          dbc.Col([dbc.Input(id="elec-z",placeholder="Z", type="number", min=0)]) ]),
+          dbc.Col([dbc.Input(id="elec-x",placeholder="X", type="number", debounce=True, step="Any")]),
+          dbc.Col([dbc.Input(id="elec-y",placeholder="Y", type="number", debounce=True, step="Any")]),
+          dbc.Col([dbc.Input(id="elec-z",placeholder="Z", type="number", debounce=True, step="Any")]) ]),
         dbc.Row([
-          dbc.Col([dbc.Input(id="elec-w",placeholder="W", type="number", min=0)]), # "width" is parallel to nerve
-          dbc.Col([dbc.Input(id="elec-h",placeholder="H", type="number", min=0)]), # "height" is perpendicular to nerve
-          dbc.Col([dbc.Input(id="elec-d",placeholder="D", type="number")       ]) ])
+          dbc.Col([dbc.Input(id="elec-w",placeholder="W", type="number", debounce=True, step="Any")]), # "width" is parallel to nerve
+          dbc.Col([dbc.Input(id="elec-h",placeholder="H", type="number", debounce=True, step="Any")]), # "height" is perpendicular to nerve
+          dbc.Col([dbc.Input(id="elec-d",placeholder="D", type="number", debounce=True, step="Any")       ]) ])
         ])  # CardBody: Electrode Configuration
       ]),
     dbc.Card([
       dbc.CardHeader("Electrode Carrier"),
       dbc.CardBody([
         dbc.Row([
-          dbc.Col([dbc.Input(id="outer-x",placeholder="X", type="number", min=0)]),
-          dbc.Col([dbc.Input(id="outer-y",placeholder="Y", type="number", min=0)]),
-          dbc.Col([dbc.Input(id="outer-z",placeholder="L", type="number", min=0)]) ])
+          dbc.Col([dbc.Input(id="outer-x",placeholder="X", type="number", debounce=True, step="Any")]),
+          dbc.Col([dbc.Input(id="outer-y",placeholder="Y", type="number", debounce=True, step="Any")]),
+          dbc.Col([dbc.Input(id="outer-z",placeholder="L", type="number", debounce=True, step="Any")]) ])
         ])  # CardBody: Electrode Carrier
     ])], width=3), # Left column
   #%%

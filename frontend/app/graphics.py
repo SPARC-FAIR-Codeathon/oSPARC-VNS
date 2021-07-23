@@ -223,6 +223,7 @@ def add_callbacks(app):
   def update_array(device):
     if device is None: 
       raise PreventUpdate
+    if isinstance(device,list) and device: device = device[0]
     return encode(array_SVG(device))
 
 
