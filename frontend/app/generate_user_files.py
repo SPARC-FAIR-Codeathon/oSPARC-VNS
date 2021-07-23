@@ -26,7 +26,7 @@ def mk_array(array):
 
   this = array['array']
 
-  if isinstance(this['ElectrodeDimensions'],list):
+  if isinstance(this['ElectrodeDimensions'][0],list):
         ew = this['ElectrodeDimensions'][0][1]
   else: ew = this['ElectrodeDimensions'][1]
 
@@ -41,8 +41,8 @@ def mk_array(array):
     d_xyz = [ max(c['c_len']/2 + 1, 3), max(c['c_wid']/2 + 1, 3), 3 ]
 
   else:
-    array['array']['carrier']['c_thickness'] = max(c['cuff_thickness'],min_tk)
-    min_tk = array['array']['carrier']['c_thickness']
+    array['array']['carrier']['cuff_thickness'] = max(c['cuff_thickness'],min_tk)
+    min_tk = array['array']['carrier']['cuff_thickness']
 
     d_xyz = [ max(c['cuff_length']+1, 6), max(c['cuff_IDy'] + min_tk + 1, 3), 
                                           max(c['cuff_IDx'] + min_tk + 1, 3)]

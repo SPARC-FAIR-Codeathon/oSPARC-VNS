@@ -8,6 +8,7 @@ Created on Wed Jul 21 06:38:15 2021
 import json
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as et
+from numpy import linspace
 import math
 import io
 import base64
@@ -46,7 +47,7 @@ def elec_xy(d, eid):
     if 'ElectrodeAngle' in d:
         a = d['ElectrodeAngle'][eid]*math.pi/180
         if a:
-            z = [epos[0]+elwh[0]*u/2 for u in [1,1,-1,-1,1]]
+            z = [epos[1]+elwh[1]*u/2 for u in [1,-1,-1,1,1]]
             x = [x*math.cos(a)+z*math.sin(a) for x,z in zip(x,z)]
             l = '--'
     
@@ -69,20 +70,52 @@ def array_SVG(filename,nerve_json=None):
       
     # make matplotlib axis and fill
     fig, ax = plt.subplots()  # a figure with a single Axes
+    ax.set_aspect('equal', 'box')
 
-    if 'carrier' in array:        
-        print('TODO: show carrier outline')
+    if 'carrier' in array:
+      if 'c_len' in array['carrier']: # flat
+        if 'c_radius' in array['carrier']: cr = array['carrier']['c_radius']
+        else:                              cr = 0.3 # default value defined in +mesh.insert_gmsh_electrodes
+        a = linspace(0,math.pi/2,16)
+        xc = array['carrier']['c_len']/2 - cr
+        yc = array['carrier']['c_wid']/2 - cr
+
+        x = [].append([math.cos(a)+xc for a in a]).append( 
+                      [math.sin(a)-xc for a in a]).append(
+                      [math.cos(a)-xc for a in a]).append(
+                      [math.sin(a)+xc for a in a])
+        y = [].append([math.sin(a)+yc for a in a]).append( 
+                      [math.cos(a)+yc for a in a]).append(
+                      [math.sin(a)-yc for a in a]).append(
+                      [math.cos(a)-yc for a in a])
+        plt.plot(y,x,'-',color='k',linewidth=0.9)
+      else:
+
+        x1 = array['carrier']['cuff_IDx']/2
+        x2 = array['carrier']['cuff_thickness']
+        y1 = array['carrier']['cuff_length']/2
+
+        x = [x1+a*x2 for a in [0,1,1,0,0]]
+        y = [ y1*b    for b in [1,1,-1,-1,1]]
+
+        ax.fill(y,x,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)
+
+        x = [-x for x in x]        
+        ax.fill(y,x,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)
+
+        x = [(x1+x2)*a for a in [1,-1,-1,1,1]]
+        plt.plot(y,x,'-',color='k',linewidth=0.9)
 
 
     for u in range(0,len(array['ElectrodeTypeIndex'])):
         
         x,y,s = elec_xy(array,u) # get electrode
-        h = plt.plot(y,x,s)    
+        h = plt.plot(y,x,s)
         
         if 'ElectrodeAngle' in array:
             if s == '--': va = 'top'
             else:         va = 'bottom'
-        else:             va = 'center'    
+        else:             va = 'center'
         
         plt.text((y[0]+y[2])/2, (x[0]+x[2])/2, 'E%d'%(u+1), 
                      color=h[0].get_color(),
@@ -149,7 +182,7 @@ def nerve_SVG(xml_file, json_file = None):
 
     # make matplotlib axis and fill
     fig, ax = plt.subplots()  # a figure with a single Axes
-    ax.set_aspect('equal', 'box')    
+    ax.set_aspect('equal', 'box')
     # plt.axis('off')
     
     
@@ -228,6 +261,6 @@ def add_callbacks(app):
 
 
 
-  print('TODO add NERVE callback')
+  print('TODO add graphics (nerve) callback')
 
 

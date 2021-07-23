@@ -3,11 +3,13 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash
 
+
 from urllib.parse import quote as urlquote
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from glob import glob
 import functools 
+import base64
 
 import json
 import os
@@ -34,7 +36,11 @@ def which_input(ctx = dash.callback_context):
 
 def save_file(filepath,content):
     """Decode and store a file uploaded with Plotly Dash."""
-    data = content.encode("utf8").split(b";base64,")[1]
+    try: 
+      data = content.encode("utf8").split(b";base64,")[1]
+    except:
+      print(content.encode("utf8").split(b";base64,"))
+      raise PreventUpdate           
     base = os.path.dirname(filepath)
     if not os.path.exists(base): os.makedirs(base)
     with open(filepath, "wb") as fp:
@@ -52,11 +58,11 @@ def db_query(tag,table='USER'):
     print('TODO: query column {} from table {}'.format(tag,table))
 
 # get user ID 
-def get_user_ID(app):
+def get_user_ID(app=None):
     return 1
 
 # get session ID 
-def get_session_ID(app):
+def get_session_ID(app=None):
     return 1
 
 # what device family did the user last select
@@ -88,8 +94,10 @@ def get_default_email(app):
 
 # get list of user-defined devices
 def list_userDevices():
-  my_list = glob('../data/u/{}/*/array.json'.format(get_user_ID()))
-  
+  my_list = glob(r'../data/u/{}/*/array.json'.format(get_user_ID()))
+
+  print(my_list)
+
   dev_list = []
 
   if not my_list: return []
@@ -99,9 +107,10 @@ def list_userDevices():
 
     if isinstance(array,list): array = array[0]
     try:
-      dev_list.append({"label":me_array['array']['name'],"value":filepath})
+      dev_list.append({"label":array['array']['Name'],"value":filepath})
     except:
       print("error parsing user JSON array: "+filepath)
+      print(array)
 
   return dev_list
 
@@ -223,29 +232,40 @@ def update_electrodeDimension(mode,this,e_select,ew=None,eh=None,ed=None):
       print(e_select)
 
       if min(these(eti)) == max(these(eti)): # 'these' all same ETI
+        print("these all same type-index")
         new_eti = these(eti)[0] # proposed index 
+        print("ETI not in selection:")
+        print(those(eti))
         if new_eti in those(eti): # some other things also have the proposed ID
-          for n in range(1,max(eti)+1): 
+          print("looking for a new ETI...")
+          for n in range(1,max(eti)+2): 
             if n not in those(eti): # find lowest ID not already used
+              print("found a new ETI: {}".format(n))
               new_eti = n 
               break
+        print("update type index {}".format(new_eti))
       else: # "these" do not all have the same index 
-        for n in range(1,max(eti)+1): 
+        print("mismatch of type-indices")
+        for n in range(1,max(eti)+2): 
           if n not in those(eti): # find lowest ID not already used
             new_eti = n 
 
       if single_edata: # make into a list
+        print("ElectrodeDimensions becomes list")
         this['array']['ElectrodeDimensions'] = [this['array']['ElectrodeDimensions']]
 
       ek = this['array']['ElectrodeDimensions'][0][1]
-      if new_eti >= len(this['array']['ElectrodeDimensions']):
-          new_eti = len(this['array']['ElectrodeDimensions'])
+      if new_eti >= len(this['array']['ElectrodeDimensions']):          
           this['array']['ElectrodeDimensions'].append([ew,ek,eh])
+          new_eti = len(this['array']['ElectrodeDimensions'])
+          print("ElectrodeDimensions append")
       else: 
           this['array']['ElectrodeDimensions'][new_eti] = [ew,ek,eh]
+          print("ElectrodeDimensions assign")
 
       for e in e_select: # assign ETI
         this['array']['ElectrodeTypeIndex'][e] = new_eti
+        print("ElectrodeTypeIndex assign [{}] {}".format(e,new_eti))
     # PUT suceeded in updating 'this' from ew eh ed
     return this,ew,eh,ed
 
@@ -526,33 +546,29 @@ def add_callbacks(app):
 
     return ex,ey,ez,ew,eh,ed,cx,cy,cz,cy_disable
 
-
+  
   @app.callback([Output("device-family-dropdown","options"), 
                  Output("device-family-dropdown","value")],
                   Input("upload-device","filename"),
                   Input("upload-device","contents"), 
                   Input("download-file","data"), 
                   prevent_initial_call=True)
-  def upload_device(upload_filename,upload_data,download_data):
-    if upload_filename is None or upload_data is None: raise PreventUpdate    
+  def upload_device(name,data,dl_data):
+    if name is None or data is None: raise PreventUpdate    
     clicked = which_input()
 
     if clicked == "download-file":
       u_list = list_deviceFamilies()
       return u_list,u_list[-1]['value']      
 
-
-    for name, data in zip(upload_filename, upload_data):
-
-      path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
-
-      print('Uploading ' + name + ' --> ' + path)
-      save_file(path,data)
+    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
+    print('Uploading ' + name + ' --> ' + path)
+    save_file(path,data)
 
     u_list = list_deviceFamilies()
     return u_list,u_list[-1]['value']
+  
 
-  #
   @app.callback(Output("download-file","data"),                 
                 Input("btn-save-array","n_clicks"), 
                 State("device-json","data"),
@@ -568,8 +584,6 @@ def add_callbacks(app):
     return dict(content=json_string, filename="array.json")
 
 
-
-  print('Inserted UI callbacks')
 
 
 

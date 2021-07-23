@@ -6,6 +6,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html #elements of wireframe
 import dash_bootstrap_components as dbc #grid
+import dash_extensions as dec
 import plotly.graph_objs as go
 #import pandas as pd
 
@@ -40,15 +41,16 @@ app.layout = dbc.Row([
       dbc.CardBody([
         dcc.Dropdown(id="device-family-dropdown", 
                      options = callbacks.list_deviceFamilies(), value = callbacks.get_default_dfamily(app), 
-                     placeholder="Select a Device Family"), 
+                     placeholder="Select a Device Family", persistence=True), 
         dcc.Dropdown(id="device-dropdown", options = callbacks.list_devices(None), value = None, 
-                     placeholder="Select a Device", disabled=False),
+                     placeholder="Select a Device", disabled=False, persistence=True),
         dcc.Upload(id="upload-device", className="uploada",
                    children=html.Div(
                      ["Drag and drop or click to",html.Br(),"select an array design to upload"]
-                    )),
+                    )), # dcc.upload
         dbc.Button("Save", id='btn-save-array', color="primary", outline=True,
-                       className="mr-1",n_clicks=0),         
+                       className="mr-1",n_clicks=0), 
+        dec.Download(id="download-file") # invisible component 
         ]) # CardBody: device
       ]), 
     dbc.Card([
