@@ -488,7 +488,7 @@ def add_callbacks(app):
       print("\n")
       raise PreventUpdate
 
-    these = [{"label":"Elec{}".format(n+1),"value":n+1} for n in numel]
+    these = [{"label":"Elec{}".format(n+1),"value":n} for n in numel]
 
     if clicked == 'add-elec': 
         return [len(this['array']['ElectrodeTypeIndex'])-1], these
@@ -587,9 +587,84 @@ def add_callbacks(app):
 
 
 
+  @app.callback([Output("nerve-x","value"), 
+                 Output("nerve-y","value"), 
+                 Output("nerve-r","value"), 
+                 Output("nerve-name","children"),
+                 Output("nerve-name","style")],
+                 Input("upload-nerve","filename"),
+                 Input("upload-nerve","contents"),
+                 State("nerve-x","value"),
+                 State("nerve-y","value"),
+                 State("nerve-r","value"),
+                 State("nerve-name","children"),
+                 State("nerve-name","style"), prevent_initial_call=True)
+  def upload_nerve(name,data,nx,ny,nr,nn,nn_style):
+    if name is None or data is None:
+
+      generate_user_files.check_existing_nerve_files()
 
 
+      raise PreventUpdate    
+    clicked = which_input()
 
+    if clicked == "download-file":
+      u_list = list_deviceFamilies()
+      return u_list,u_list[-1]['value']      
+
+    file_ext = os.path.splitext(name)
+
+    if file_ext[1] in ['.json']:
+      path = '../data/u/{}/{}/nerve.json'.format(get_user_ID(),get_session_ID())
+    elif file_ext[1] in ['.xml']: 
+      path = '../data/u/{}/{}/nerve.xml'.format(get_user_ID(),get_session_ID())      
+      nx=0
+      ny=0
+      nr=0
+      nn=os.path.basename(file_ext[0])
+      nn_style = {'display':'block'}
+    else:
+      print(2,"{}: not a valid file (expected .xml, .json)".format(name))
+      raise PreventUpdate
+
+    print('Uploading ' + name + ' --> ' + path)
+    save_file(path,data)
+
+    u_list = list_deviceFamilies()
+    
+    if file_ext[1] in ['.json']:
+      with open(path) as f: 
+        n_layout = parse(f)        
+      n_layout = n_layout['nerve']
+
+      if "xRotate" in n_layout: nr = n_layout["xRotate"]
+      else:                     nr = 0
+      if "xMove" in n_layout: 
+        nx = n_layout["xMove"][0]
+        ny = n_layout["xMove"][1]
+      else: 
+        nx = 0
+        ny = 0
+
+    return nx,ny,nr,nn,nn_style
+
+  @app.callback([Output("nerve-json","data"),
+                 Output("nerve-x-lbl","children"),
+                 Output("nerve-y-lbl","children"),
+                 Output("nerve-r-lbl","children")],
+                 Input("nerve-x","value"),
+                 Input("nerve-y","value"),
+                 Input("nerve-r","value"),
+                 State("nerve-name","children"))
+  def update_nerve_sliders(nx,ny,nr,name):
+    dat = {'nerve':{'source':name,'xRotate':nr,'xMove':[nx,ny]}} # other parameters generated at compile
+    print(2,'TODO: read XML and cache into dat[''gfx''] ')
+    nxl = "{} µm".format(nx)
+    nyl = "{} µm".format(ny)
+    nrl = "{}°".format(nr)
+    return dat,nxl,nyl,nrl
+
+  # @app.callback()
 
 #%%
 if __name__ == '__main__':

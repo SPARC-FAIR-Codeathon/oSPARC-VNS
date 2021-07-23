@@ -48,7 +48,7 @@ app.layout = dbc.Row([
                    children=html.Div(
                      ["Drag and drop or click to",html.Br(),"select an array design to upload"]
                     )), # dcc.upload
-        dbc.Button("Save", id='btn-save-array', color="primary", outline=True,
+        dbc.Button("Save Device Configuration", id='btn-save-array', color="primary", outline=True,
                        className="mr-1",n_clicks=0), 
         dec.Download(id="download-file") # invisible component 
         ]) # CardBody: device
@@ -84,24 +84,33 @@ app.layout = dbc.Row([
         ])  # CardBody: Electrode Carrier
     ])], width=3), # Left column
   #%%
-  dbc.Col([
-      html.Img(src=graphics.encode(graphics.array_SVG(None,None)),id="view-upper"), 
-      html.Img(src=graphics.encode(graphics.nerve_SVG(None,None)),id="view-lower")
-    ], id="viewport", width=6, style={'align-items':'center'}), # middle 
+  dbc.Col( 
+    html.Div([
+      html.Img(src=graphics.encode(graphics.array_SVG(None,None)),id="view-device"), 
+    ],style={'margin':'auto','display':'block'}), id="viewport-col", width=6), # middle 
   #%%
   dbc.Col([
     dbc.Card([
       dbc.CardHeader("Select Nerve Anatomy"),
       dbc.CardBody([
+        html.Div(["nerve.xml"],id="nerve-name",style={'display':'none'}),
         dcc.Upload(id="upload-nerve", className="uploada",
-                   children=html.Div(["Drag and drop or click to",html.Br(),"select a nerve anatomy (MBF-XML) file"])),
-        html.Div([dcc.Slider(id="nerve-x",min=-1000,max=1000,step=10,value=0)],style={'height':'30px'}),
-        html.Div([dcc.Slider(id="nerve-y",min=-1000,max=1000,step=10,value=0)],style={'height':'30px'}),
-        html.Div([dcc.Slider(id="nerve-r",min=-360,max=360,step=5,value=0)],style={'height':'30px'}),
-        dbc.Button("Save Position", id='btn-save-nerve', color="primary", outline=True,
+                   children=html.Div(["Drag and drop or click to",html.Br(),"select a nerve anatomy (MBF-XML) file"],id="upload-nerve-text")),
+        html.Div([html.Div([
+          dcc.Slider(id="nerve-x",min=-1000,max=1000,step=10,value=0,updatemode='drag')],style={"margin-top":"9px"}),
+          dbc.InputGroupAddon("0 µm",addon_type="append",id='nerve-x-lbl',style={"height":"30px"})],
+          style={'height':'34px',"display":"grid","grid-template-columns": "85% 15%"}),
+        html.Div([html.Div([
+          dcc.Slider(id="nerve-y",min=-1000,max=1000,step=10,value=0,updatemode='drag')],style={"margin-top":"9px"}),
+          dbc.InputGroupAddon("0 µm",addon_type="append",id='nerve-y-lbl',style={"height":"30px"})],
+          style={'height':'34px',"display":"grid","grid-template-columns": "85% 15%"}),
+        html.Div([html.Div([
+          dcc.Slider(id="nerve-r",min=-360,max=360,step=5,value=0,updatemode='drag')],style={"margin-top":"9px"}),
+          dbc.InputGroupAddon("0°",addon_type="append",id='nerve-r-lbl',style={"height":"30px"})],
+          style={'height':'34px',"display":"grid","grid-template-columns": "85% 15%"}),        
+        dcc.Dropdown(id="nerve-dropdown", options = callbacks.list_nerveClasses(),persistence=True),
+        dbc.Button("Save Nerve Configuration", id='btn-save-nerve', color="primary", outline=True,
                        className="mr-1",n_clicks=0),
-        dcc.Dropdown(id="nerve-dropdown", 
-                     options = callbacks.list_nerveClasses(), value = callbacks.get_default_nerveClass(app))
       ]) # CardBody: Nerve Configuration
     ]), 
     dbc.Card([
@@ -124,7 +133,8 @@ app.layout = dbc.Row([
         dbc.Button("Run Model", id="btn-run", size="lg", color = "success", className="mr-1")
      ]) # CardBody: run control
     ])], width=3), # Right column
-    dcc.Store(id="device-json", storage_type='local')
+    dcc.Store(id="device-json", storage_type='session'),
+    dcc.Store(id="nerve-json", storage_type='session')
   ]) # layout
 
 callbacks.add_callbacks(app)

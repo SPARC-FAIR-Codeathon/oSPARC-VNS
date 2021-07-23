@@ -9,6 +9,7 @@ import json
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as et
 from numpy import linspace
+from plotly.tools import mpl_to_plotly
 import math
 import io
 import base64
@@ -77,18 +78,21 @@ def array_SVG(filename,nerve_json=None):
         if 'c_radius' in array['carrier']: cr = array['carrier']['c_radius']
         else:                              cr = 0.3 # default value defined in +mesh.insert_gmsh_electrodes
         a = linspace(0,math.pi/2,16)
-        xc = array['carrier']['c_len']/2 - cr
-        yc = array['carrier']['c_wid']/2 - cr
+        xc = array['carrier']['c_len']/2-cr
+        yc = array['carrier']['c_wid']/2-cr
 
-        x = [].append([math.cos(a)+xc for a in a]).append( 
-                      [math.sin(a)-xc for a in a]).append(
-                      [math.cos(a)-xc for a in a]).append(
-                      [math.sin(a)+xc for a in a])
-        y = [].append([math.sin(a)+yc for a in a]).append( 
-                      [math.cos(a)+yc for a in a]).append(
-                      [math.sin(a)-yc for a in a]).append(
-                      [math.cos(a)-yc for a in a])
-        plt.plot(y,x,'-',color='k',linewidth=0.9)
+        x = [cr*math.cos(a)+xc for a in a]
+        x.extend([-cr*math.sin(a)-xc for a in a])
+        x.extend([-cr*math.cos(a)-xc for a in a])
+        x.extend([cr*math.sin(a)+xc for a in a])
+        x.append(x[0])
+        y = [cr*math.sin(a)+yc for a in a]
+        y.extend([cr*math.cos(a)+yc for a in a])
+        y.extend([-cr*math.sin(a)-yc for a in a])
+        y.extend([-cr*math.cos(a)-yc for a in a])
+        y.append(y[0])
+
+        plt.plot(x,y,'-',color='k',linewidth=0.9)
       else:
 
         x1 = array['carrier']['cuff_IDx']/2
@@ -252,10 +256,14 @@ def add_callbacks(app):
 
 
   # Simple update to electrode drop-down
-  @app.callback(Output("view-upper","src"), Input("device-json","data"))
-  def update_array(device):
+  @app.callback(Output("view-device","src"), 
+                 Input("device-json","data"), 
+                 Input("nerve-json","data"), 
+                 )
+  def update_array(device,nerve):
     if device is None: 
       raise PreventUpdate
+
     if isinstance(device,list) and device: device = device[0]
     return encode(array_SVG(device))
 

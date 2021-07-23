@@ -52,3 +52,13 @@ def mk_array(array):
   array.pop("ui",[]) # remove 'ui' from dict 
 
   return array,json.dumps(array,indent=2)
+
+
+
+
+def check_existing_nerve_files():
+
+
+
+
+  print('todo: check existing nerve files / json')
