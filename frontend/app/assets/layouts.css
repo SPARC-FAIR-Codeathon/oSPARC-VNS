@@ -21,4 +21,5 @@ body {
   vertical-align: middle;
   padding: 4px;
   margin: 8px;
+  cursor: pointer;
 }

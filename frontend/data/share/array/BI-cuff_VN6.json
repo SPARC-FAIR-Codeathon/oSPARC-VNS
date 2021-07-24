@@ -12,8 +12,9 @@
     "carrier":{ 
         "cuff_IDy" : 0.2, 
         "cuff_IDx" : 0.55,
-        "cuff_IDr" : 0.0
-    }
+        "cuff_IDr" : 0.0,
+        "cuff_length": 9.0,
+        "cuff_thickness": 0.22 }
   }, 
   "mesh": {
     "MeshLengthMax": 0.2,

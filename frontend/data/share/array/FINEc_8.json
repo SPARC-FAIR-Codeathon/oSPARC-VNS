@@ -6,16 +6,16 @@
                            [0,0,1.66],[0,0,-0.55], 
                            [0,0,-0.55],[0,0,1.66], 
                            [0,0,-2.77],[0,0,3.88]], 
-    "ElectrodeDimensions": [2.3,0.05,1.0],
+    "ElectrodeDimensions": [2.3,0.1,1.0],
     "ElectrodeTypeIndex": [1,1,1,1,1,1,1,1],     
     "ElectrodeAngle":[0,180,0,180,0,180,0,180],
     "InsetDepth":0.55, 
     "carrier":{ 
-        "cuff_IDy" : 1.0, 
-        "cuff_IDx" : 10.0,
-        "cuff_IDr" : 0.2,
-        "cuff_length" : 7.0,
-        "cuff_thickness" : 0.5
+        "cuff_IDy": 1.0,
+        "cuff_IDx": 10.0,
+        "cuff_IDr": 0.2,
+        "cuff_length": 7.0,
+        "cuff_thickness": 0.5
     }
   }, 
   "mesh": {
