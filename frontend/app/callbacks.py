@@ -276,7 +276,7 @@ def add_callbacks(app):
                   Output("device-dropdown","disabled")], 
                   Input("device-family-dropdown","value") )
   def update_device_dropdown(family):
-    opts = list_devices(family)
+    opts = user_files.list_devices(family)
     default = [{"label":"...","value":""}]
     if opts is None: return default, None, True
     if not opts: return default, None, True
@@ -640,34 +640,42 @@ def add_callbacks(app):
 def add_routing(app):
 
   @app.callback([Output('url','pathname'),
+                 Output('navbar-session','options'),
                  Output('navbar-results','disabled')],
                  Input('navbar-setup','n_clicks'),
                  Input('navbar-results','n_clicks'),
-                 Input('navbar-session','value'), 
+                 Input('navbar-session','value'),                  
+                 State('navbar-session','options'),
                  State('url','pathname'))
-  def on_nav_click(bs,br,session,url):
+  def on_nav_click(bs,br,session,ses_list,url):
 
     clicked = which_input()
     print("update_navbar: "+clicked)
 
-    if session == -1: # "new session"
+    if session == ses_list[-1]['value']: # "new session"
 
       s_list = user_files.list_userSessions()
-      session = max([s['value'] for s in s_list])+1
+      ses_list[-1]['label'] = 'Session {}'.format(session)
+      ses_list.append({'label':'New Session','value':session+1})
+      session_path = '../data/u/{}/{}/'.format(get_user_ID(),session)
+      if not os.path.exists(session_path):
+        os.mkdir(session_path)
 
-    r_ok = user_files.has_results(get_user_ID,session)
+    r_ok = user_files.has_results(get_user_ID(),session)
+    print(session)
+    print(r_ok)
 
-    if clicked == 'navbar-setup':
-      return "/setup/{}".format(session), not r_ok
-    elif clicked == 'navbar-results':
-      if r_ok: 
-        return "/results/{}".format(session), not r_ok
-      else:
-        return "/setup/{}".format(session), not r_ok
+    if clicked == 'navbar-setup': url = "/setup/{}".format(session)
+    elif clicked == 'navbar-results': 
+      if r_ok: url = "/results/{}".format(session)
+      else:    url = "/setup/{}".format(session)
     else: 
        stub = re.match(r"/[^/]/",url)
        if not stub: stub = ['/setup/']
-       return "{}{}".format(stub[0],session), not r_ok
+       url = "{}{}".format(stub[0],session)
+       
+
+    return url, ses_list, not r_ok
 
 
 #%%

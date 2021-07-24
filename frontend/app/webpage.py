@@ -46,19 +46,19 @@ def download(path):
 # I've reorganised this into a condensed form so we can see more of it in a single screen. Excessive whitespace is an anti-pattern.
 
 nav_bar = dbc.Card([
-  html.Div([
+  dbc.Row([dbc.Col([
     dbc.Button("MODEL SETUP", id='navbar-setup', color="secondary", outline=True,
                        className="mr-1",n_clicks=0,size="sm"), 
     dbc.Button("MODEL RESULTS", id='navbar-results', color="secondary", outline=True,
                        className="mr-1",n_clicks=0,size="sm",disabled=True),
-   ],style={'text-align':'left','width':'75%'}),
-  html.Div([ 
+   ],width=9,style={'text-align':'left'}),
+   dbc.Col([
         dcc.Dropdown(id="navbar-session", 
-                     options = user_files.list_userSessions(), value = 1, 
-                     placeholder="Select a Device Family", persistence=True, clearable=False), 
+                     options = user_files.list_userSessions(), value = [], 
+                     placeholder="Select Session", persistence=True, clearable=False), 
 
-    ],style={'text-align':'right','width':'25%'})
-],body=True, style={"background-color": "#eeeeee","padding":"6px"})
+    ],width=3)
+  ])],body=True, style={"background-color": "#eeeeee","padding":"6px","margin-top":"4px","margin-bottom":"4px"})
 
 
 

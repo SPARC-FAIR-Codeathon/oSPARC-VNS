@@ -80,14 +80,14 @@ def get_MBF_XML_contours(xml_file):
 # get list of user-defined devices
 def list_userSessions(user=1):
 
-  sessions = glob(r'../data/u/{}/*'.format(user))
-  
-  if not sessions: sessions = [{"label":"Session 1","value":1}]
+  session_folders = glob(r'../data/u/{}/*'.format(user))
+  sessions = list()
 
-  for sid in [os.path.basename(p) for p in sessions]:    
+  if not session_folders: sessions = [{"label":"Session 1","value":1}]
+  for sid in [os.path.basename(p) for p in session_folders]:    
     sessions.append({"label":"Session {}".format(sid),"value":int(sid)})
 
-  sessions.append({"label":"New session","value":-1})
+  sessions.append({"label":"New Session","value":len(sessions)+1})
 
   return sessions
 
@@ -235,8 +235,11 @@ def get_user_XML_contours(user=1,session=1):
 
 
 
-def has_results(user=1,session=1,file='nerve-recordings.mat'):
+def has_results(user=1,session=1,file='nerve-recording*.mat'):
 
   filename = '../data/u/{}/{}/{}'.format(user,session,file)
-  return os.path.exists(filename), filename
+  print(filename)
+  filename = glob(filename)
+
+  return len(filename) > 0, filename
 
