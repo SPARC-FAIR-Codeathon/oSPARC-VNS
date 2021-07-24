@@ -449,9 +449,9 @@ def add_callbacks(app):
                   Input("upload-device","filename"),
                   Input("upload-device","contents"), 
                   Input("download-device","data"),
-                  State("navbar-session","value"),
+                  # State("navbar-session","value"),
                   prevent_initial_call=True)
-  def upload_device(name,data,dl_data,session):
+  def upload_device(name,data,dl_data,session=1):
     if name is None or data is None: raise PreventUpdate    
     clicked = which_input()
 
@@ -470,9 +470,9 @@ def add_callbacks(app):
   @app.callback(Output("download-device","data"),
                 Input("btn-save-array","n_clicks"), 
                 State("device-json","data"),
-                State("navbar-session","value"),
+                # State("navbar-session","value"),
                 prevent_initial_call=True)
-  def save_array(n_clicks,data,session):
+  def save_array(n_clicks,data,session=1):
 
     array,json_string = user_files.make_ARRAY_json(data)
     path = '../data/u/{}/{}/array.json'.format(get_user_ID(),session)
@@ -498,9 +498,9 @@ def add_callbacks(app):
                  State("nerve-name","children"),
                  State("nerve-name","style"),
                  State("axon-pop-dropdown","value"),
-                 State("anatomy-json","data"),
-                 State("navbar-session","value"))
-  def upload_nerve(name,data,nx,ny,nr,nn,nn_style,ap,anat,session):
+                 State("anatomy-json","data"))
+                 #State("navbar-session","value"))
+  def upload_nerve(name,data,nx,ny,nr,nn,nn_style,ap,anat,session=1):
 
     USER = get_user_ID()
 
@@ -611,9 +611,9 @@ def add_callbacks(app):
                 State("nerve-json","data"),
                 State("device-json","data"),
                 State("axon-pop-dropdown","value"),
-                State("navbar-session","value"),
+                #State("navbar-session","value"),
                 prevent_initial_call=True)
-  def save_nerve_json(n_clicks,data,array,ap,session):
+  def save_nerve_json(n_clicks,data,array,ap,session=1):
 
     array = user_files.make_ARRAY_json(array)
     array = array[0]
@@ -638,6 +638,8 @@ def add_callbacks(app):
 
 # implement page routing
 def add_routing(app):
+
+  return
 
   @app.callback([Output('url','pathname'),
                  Output('navbar-session','options'),
