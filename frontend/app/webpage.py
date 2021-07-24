@@ -108,7 +108,7 @@ app.layout = dbc.Row([
           dcc.Slider(id="nerve-r",min=-360,max=360,step=5,value=0,updatemode='drag')],style={"margin-top":"9px"}),
           dbc.InputGroupAddon("0°",addon_type="append",id='nerve-r-lbl',style={"height":"30px"})],
           style={'height':'34px',"display":"grid","grid-template-columns": "85% 15%"}),        
-        dcc.Dropdown(id="nerve-dropdown", options = callbacks.list_nerveClasses(),persistence=True),
+        dcc.Dropdown(id="axon-pop-dropdown", options = callbacks.list_nerveClasses(),persistence=True),
         dbc.Button("Save Nerve Configuration", id='btn-save-nerve', color="primary", outline=True,
                        className="mr-1",n_clicks=0),
       ]) # CardBody: Nerve Configuration
@@ -134,7 +134,8 @@ app.layout = dbc.Row([
      ]) # CardBody: run control
     ])], width=3), # Right column
     dcc.Store(id="device-json", storage_type='session'),
-    dcc.Store(id="nerve-json", storage_type='session')
+    dcc.Store(id="nerve-json", storage_type='session'),
+    dcc.Store(id="anatomy-json", storage_type='memory'),
   ]) # layout
 
 callbacks.add_callbacks(app)

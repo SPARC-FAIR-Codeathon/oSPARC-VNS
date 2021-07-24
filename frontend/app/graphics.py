@@ -5,20 +5,21 @@ Created on Wed Jul 21 06:38:15 2021
 @author: Calvin
 """
 
+import io
+import math
 import json
+import base64
+
+from numpy import linspace
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as et
-from numpy import linspace
 from plotly.tools import mpl_to_plotly
-import math
-import io
-import base64
 
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-
-
 from statistics import median
+
+import user_files
 
 def parse(text):
     try:
@@ -31,7 +32,14 @@ def encode(svg_string):
     encoded = base64.b64encode(svg_string) 
     return 'data:image/svg+xml;base64,{}'.format(encoded.decode()) 
 
-# Electrode view 1  
+def gcf_to_svg(): # convert active figure (gcf) to svg
+
+  # render to SVG
+  f = io.BytesIO()
+  plt.savefig(f, format = "svg",pad_inches=0)
+  return f.getvalue() # svg string
+
+# Electrode view 1 (xy)
 def elec_xy(d, eid):
     
     etype = d['ElectrodeTypeIndex'][eid]-1    
@@ -54,106 +62,36 @@ def elec_xy(d, eid):
     
     return x, y, l
 
-def array_SVG(filename,nerve_json=None):
-    
-    if filename is None:
-        return b''
-
-    if isinstance(filename, dict ): 
-      array = filename
-    else: 
-      with open(filename) as f: 
-        array = parse(f)
-      
-      
-    array = array['array'] # get rid of {mesh}    
-    assert('ElectrodeDimensions' in array) # QC
-      
-    # make matplotlib axis and fill
-    fig, ax = plt.subplots()  # a figure with a single Axes
-    ax.set_aspect('equal', 'box')
-
-    if 'carrier' in array:
-      if 'c_len' in array['carrier']: # flat
-        if 'c_radius' in array['carrier']: cr = array['carrier']['c_radius']
-        else:                              cr = 0.3 # default value defined in +mesh.insert_gmsh_electrodes
-        a = linspace(0,math.pi/2,16)
-        xc = array['carrier']['c_len']/2-cr
-        yc = array['carrier']['c_wid']/2-cr
-
-        x = [cr*math.cos(a)+xc for a in a]
-        x.extend([-cr*math.sin(a)-xc for a in a])
-        x.extend([-cr*math.cos(a)-xc for a in a])
-        x.extend([cr*math.sin(a)+xc for a in a])
-        x.append(x[0])
-        y = [cr*math.sin(a)+yc for a in a]
-        y.extend([cr*math.cos(a)+yc for a in a])
-        y.extend([-cr*math.sin(a)-yc for a in a])
-        y.extend([-cr*math.cos(a)-yc for a in a])
-        y.append(y[0])
-
-        plt.plot(x,y,'-',color='k',linewidth=0.9)
-      else:
-
-        x1 = array['carrier']['cuff_IDx']/2
-        x2 = array['carrier']['cuff_thickness']
-        y1 = array['carrier']['cuff_length']/2
-
-        x = [x1+a*x2 for a in [0,1,1,0,0]]
-        y = [ y1*b    for b in [1,1,-1,-1,1]]
-
-        ax.fill(y,x,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)
-
-        x = [-x for x in x]        
-        ax.fill(y,x,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)
-
-        x = [(x1+x2)*a for a in [1,-1,-1,1,1]]
-        plt.plot(y,x,'-',color='k',linewidth=0.9)
+# Electrode view 2 (yz)
+def elec_yz(d, eid):
 
 
-    for u in range(0,len(array['ElectrodeTypeIndex'])):
+    print('TODO elec_yz')
+
+
+
+def rounded_rect(w,h,r):
         
-        x,y,s = elec_xy(array,u) # get electrode
-        h = plt.plot(y,x,s)
-        
-        if 'ElectrodeAngle' in array:
-            if s == '--': va = 'top'
-            else:         va = 'bottom'
-        else:             va = 'center'
-        
-        plt.text((y[0]+y[2])/2, (x[0]+x[2])/2, 'E%d'%(u+1), 
-                     color=h[0].get_color(),
-                        ha='center', va=va, 
-                        fontweight='bold',fontsize=14)
+    a = linspace(0,math.pi/2,16)
+    xc = w/2 - r
+    yc = w/2 - r
 
-    if nerve_json is not None:
-        print('TODO: show nerve outline')
-        
+    x =      [ r*math.cos(a)+xc for a in a]
+    x.extend([-r*math.sin(a)-xc for a in a])
+    x.extend([-r*math.cos(a)-xc for a in a])
+    x.extend([ r*math.sin(a)+xc for a in a])
+    x.append(x[0])
+    y =      [ r*math.sin(a)+yc for a in a]
+    y.extend([ r*math.cos(a)+yc for a in a])
+    y.extend([-r*math.sin(a)-yc for a in a])
+    y.extend([-r*math.cos(a)-yc for a in a])
+    y.append(y[0])
 
-    # render to SVG
-    f = io.BytesIO()
-    plt.savefig(f, format = "svg")
-    return f.getvalue() # svg string
+    return x,y
+
 
 # Nerve + cross-section view
 
-def get_contours(xml_file):
-    
-    root = et.parse(xml_file).getroot()
-    loop = []
-    
-    for c in root.findall('{*}contour'):
-        
-        nom = c.attrib['name'].lower()
-        if 'blood' in nom: continue
-        if 'outer' in nom: continue
-        
-        xy = [(float(p.attrib['x']),-float(p.attrib['y'])) for p in c.findall('{*}point')]
-
-        loop.append({'name': c.attrib['name'], 
-                     'xy': xy })
-    return loop
-    
 def find_centroid(c):
     
     x0 = []
@@ -166,49 +104,108 @@ def find_centroid(c):
         
     return (sum(x0)/n, sum(y0)/n)
 
+def apply_xForm(anat,xf)
 
-def nerve_SVG(xml_file, json_file = None):
+  if xf is None: return anat
+  if 'nerve' in xf: xf = xf['nerve']
 
-    if xml_file is None:
-        return b''
+  xy0 = find_centroid(anat['anat']) # find xy0, needed for rotate
 
-    c = get_contours(xml_file) # load data
+  print(anat)
+  print(xf)
+
+  for u in range(0,len(anat['anat'])):
+
+    x = [xy[0] for xy in anat['anat'][u]['xy']]
+    y = [xy[1] for xy in anat['anat'][u]['xy']]
+
+    if 'xRotate' in xf:
+      a = xf['xRotate']/180*math.pi
+      x = [math.cos(a)*(xy[0]-xy0[0]) - 
+           math.sin(a)*(xy[1]-xy0[1]) + xy0[0] for xy in c[u]['xy']]
+      y = [math.sin(a)*(xy[0]-xy0[0]) + 
+           math.cos(a)*(xy[1]-xy0[1]) + xy0[1] for xy in c[u]['xy']]
+
+    if 'xMove' in xf:
+      x = [x+xf['xMove'][0] for x in x]
+      y = [y+xf['xMove'][1] for y in y]
+
+    xmin = min([x(0) for x in xy])
+    xmax = max([x(1) for x in xy])
+
+    anat['anat'][u]['xy'] = [(x,y) for x,y in zip(x,y)]
+    anat['anat'][u]['xr'] = (xmin,xmax)
+
+def mk_ARRAY_subplot(array,nerve,ax):
     
-    if json_file is not None:
-        print('loading' + json_file)
-        with open(json_file) as f:
-            xf = parse(f)
-        print(xf.__class__)
-        xf = xf['nerve']
-        print(xf.__class__)
-        
-        xy0 = find_centroid(c) # find xy0, needed for rotate
+    if array is None: return None
+    if 'array' in array: array = array['array']
 
-    # make matplotlib axis and fill
-    fig, ax = plt.subplots()  # a figure with a single Axes
     ax.set_aspect('equal', 'box')
-    # plt.axis('off')
+
+    # make outline of PDMS carrier
+
+    if 'carrier' in array:
+      if 'c_len' in array['carrier']: # flat
+        if 'c_radius' in array['carrier']: cr = array['carrier']['c_radius']
+        else:                              cr = 0.3 # default value defined in +mesh.insert_gmsh_electrodes
+        
+        x,y = rounded_rect(array['carrier']['c_len'], 
+                           array['carrier']['c_wid'], cr)
+
+        ax.plot(x,y,'-',color='k',linewidth=0.9)
+      else:
+
+        x1 = array['carrier']['cuff_IDx']/2
+        x2 = array['carrier']['cuff_thickness']
+        y1 = array['carrier']['cuff_length']/2
+
+        x = [x1+a*x2 for a in [0,1,1,0,0]]
+        y = [ y1*b   for b in [1,1,-1,-1,1]]
+
+        ax.fill(y,x,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)
+
+        x = [-x for x in x]        
+        ax.fill(y,x,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)
+
+        x = [(x1+x2)*a for a in [1,-1,-1,1,1]]
+        ax.plot(y,x,'-',color='k',linewidth=0.9)
+
+    # show each electrode
+    for u in range(0,len(array['ElectrodeTypeIndex'])):
+        
+        x,y,s = elec_xy(array,u) # get electrode
+        h = ax.plot(y,x,s)
+        
+        if 'ElectrodeAngle' in array:
+            if s == '--': va = 'top'
+            else:         va = 'bottom'
+        else:             va = 'center'
+        
+        ax.text((y[0]+y[2])/2, (x[0]+x[2])/2, 'E%d'%(u+1), 
+                     color=h[0].get_color(),
+                        ha='center', va=va, 
+                        fontweight='bold',fontsize=14)
+
+    if nerve is not None:
+
+        print('TODO: show nerve outline')
+        print(nerve)
+
+def mk_NERVE_subplot(array,nerve,ax):
+
+
+
+
+
+    print('TODO')
+    print(array)
+    print(nerve)
+    
+    ax.set_aspect('equal', 'box')
     
     
     for u in range(0,len(c)):
-        
-        x = [xy[0]/1e3 for xy in c[u]['xy']]
-        y = [xy[1]/1e3 for xy in c[u]['xy']]
-
-        if json_file is not None:
-          if 'xRotate' in xf:
-            a = xf['xRotate']/180*math.pi
-            x = [math.cos(a)*(xy[0]-xy0[0])/1e3 - 
-                 math.sin(a)*(xy[1]-xy0[1])/1e3 + xy0[0]/1e3 for xy in c[u]['xy']]
-            y = [math.sin(a)*(xy[0]-xy0[0])/1e3 + 
-                 math.cos(a)*(xy[1]-xy0[1])/1e3 + xy0[1]/1e3 for xy in c[u]['xy']]
-
-          if 'xMove' in xf:
-            x = [x+xf['xMove'][0]/1e3 for x in x]
-            y = [y+xf['xMove'][1]/1e3 for y in y]
-
-        x.append(x[0])
-        y.append(y[0])
         
         h = plt.plot(x,y,'-')    
         
@@ -228,26 +225,38 @@ def nerve_SVG(xml_file, json_file = None):
     return f.getvalue() # svg string
 
 
-if __name__ == "__main__":
-  
-    uid = 1 # user ID
-    sid = 1 # session ID 
+
+def view_model_inputs(array,nerve):
+
+    if array is None and nerve is None: raise PreventUpdate
+
+    if not isinstance(array, dict ): 
+      filename = array
+      with open(filename) as f: 
+        array = parse(f)
       
-    # xml_file = 's3://pennsieve-prod-discover-publish-use1/65/6/files/derivative/sub-47/sam-2/sub-47_sam-2_C47-2MergeMask.xml'
-    # with open("nerve.svg",'wb') as f:
-    #     f.write(nerve_SVG(xml_file))
-
-    xml_file = r'..\data\u\{0}\{1}\nerve.xml'.format(uid,sid)
-    json_file = r'..\data\u\{0}\{1}\nerve.json'.format(uid,sid)
-
-    print( nerve_SVG(xml_file, json_file) )
+    if not isinstance(nerve, dict ): 
+      filename = array
+      with open(filename) as f: 
+        array = parse(f)
     
+      
+    if 'array' in array: array = array['array'] # get rid of {mesh}    
+    assert('ElectrodeDimensions' in array) # QC
+      
+    # make matplotlib axis and fill
+
+
+    fig, ax = plt.subplots(2,1,num=1, clear=True,'sharex'=True)
+    fig.set_size_inches(8.0, 4.0)
+
+    ax = subplot(2, 1, 1, figure=fig)
+    mk_ARRAY_subplot(array,nerve,ax[0])
+
+    ax = subplot(2, 1, 1, figure=fig)
+    mk_NERVE_subplot(array,nerve,ax[1])
+
     
-    # print(array_SVG('misc/C-FINE.json'))
-
-
-
-
 
 
 
@@ -259,16 +268,19 @@ def add_callbacks(app):
   @app.callback(Output("view-device","src"), 
                  Input("device-json","data"), 
                  Input("nerve-json","data"), 
-                 )
-  def update_array(device,nerve):
-    if device is None: 
+                 Input("anatomy-json","data"))
+  def update_array(array,nerve,anatomy):
+    if array is None: 
       raise PreventUpdate
 
-    if isinstance(device,list) and device: device = device[0]
-    return encode(array_SVG(device))
+    if isinstance(array,list) and array: array = array[0]
+    if isinstance(nerve,list) and nerve: nerve = nerve[0]
+
+    nerve = apply_xForm(anatomy,nerve)
 
 
+    view_model_inputs(array,nerve) # make mpl figure
 
-  print('TODO add graphics (nerve) callback')
+    return encode(gcf_to_svg())
 
 

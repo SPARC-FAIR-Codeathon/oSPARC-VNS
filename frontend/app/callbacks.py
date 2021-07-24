@@ -3,27 +3,20 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash
 
-
 from urllib.parse import quote as urlquote
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from glob import glob
+
 import functools 
 import base64
-
 import json
-import os
 import math
+import os
 
-import generate_user_files
+import user_files
 
-
-def parse(text):
-    try:
-        return json.load(text)
-    except ValueError as e:
-        print('invalid json: %s' % e)
-        return None # or: raise
+# some utilities 
 
 def file_download_link(filename):
     """Create a Plotly Dash 'A' element that downloads a file from the app."""
@@ -103,7 +96,7 @@ def list_userDevices():
   if not my_list: return []
   for filepath in my_list:
     with open(filepath) as f:
-      array = parse(f)
+      array = user_files.parse(f)
 
     if isinstance(array,list): array = array[0]
     try:
@@ -117,7 +110,7 @@ def list_userDevices():
 # Load device families from /data/share
 def list_deviceFamilies():
   with open(r'../data/share/array/index.json') as f:
-    arrays = parse(f)
+    arrays = user_files.parse(f)
 
   dflist = set([a['family'] for a in arrays['list']])
   dflist = ([{"label":a,"value":a} for a in dflist])
@@ -136,7 +129,7 @@ def list_devices(family):
     return list_userDevices()
 
   with open(r'../data/share/array/index.json') as f:
-    arrays = parse(f)
+    arrays = user_files.parse(f)
 
   return [{"label":a['name'],"value":a['file']} 
           for a in arrays['list'] if a['family'] == family]
@@ -144,7 +137,7 @@ def list_devices(family):
 # Load nerve classes from /data/share
 def list_nerveClasses():
     with open(r'../data/share/axon/index.json') as f:
-      axons = parse(f)
+      axons = user_files.parse(f)
     # print(axons)
     return([{"label":a["label"],"value":a["value"]} for a in axons['list']])
 
@@ -335,30 +328,6 @@ def update_device_carrier(mode,this,cx=None,cy=None,cz=None):
     
     return cx,cy,cz,device_type
 
-#%%
-# 
-# Load device from filesystem 
-@functools.lru_cache(maxsize=32)
-def get_device_json(name,family):
-
-    is_user = (family == 'user')
-    print("Loading '{}'".format(name))
-
-    if is_user: # user specified device path 
-      if not os.path.isfile(name):
-        with open(name,'wt') as f: 
-          json.dump(name, outfile)        
-      else:
-        with open(name,'rt') as f:
-          this = parse(f)
-    else: 
-      file = r'../data/share/array/{}.json'.format(name)      
-      with open(file,'rt') as f:
-        this = parse(f)
-
-    this['ui'] = {'device':name,'family':family}
-    return this
-
 
 #%% 
 #
@@ -409,7 +378,7 @@ def add_callbacks(app):
     was_loaded = False
     if device is None: raise PreventUpdate
     if this is None: 
-      this = get_device_json(device,family)
+      this = user_files.get_device_json(device,family)
       was_loaded = True
 
     if isinstance(this,list) and this: this = this[0]
@@ -418,7 +387,7 @@ def add_callbacks(app):
     print("update_device: "+clicked)
 
     if clicked=='device-dropdown' and not was_loaded: # got a new device?
-        this = get_device_json(device,family)
+        this = user_files.get_device_json(device,family)
         was_loaded = True
         return this
 
@@ -526,16 +495,16 @@ def add_callbacks(app):
     if device is None: raise PreventUpdate
     
     if this is None: 
-      this = get_device_json(device,family)
+      this = user_files.get_device_json(device,family)
       # using memoise to reduce waste here 
     elif "ui" not in this:
-      this = get_device_json(device,family)
+      this = user_files.get_device_json(device,family)
     
     if isinstance(this,list) and this: this = this[0]
 
     if not this['ui']['device'] == device or \
        not this['ui']['family'] == family:
-      this = get_device_json(device,family)
+      this = user_files.get_device_json(device,family)
 
     cy_disable = False
 
@@ -575,7 +544,7 @@ def add_callbacks(app):
                 prevent_initial_call=True)
   def make_local_array(n_clicks,data):
 
-    array,json_string = generate_user_files.mk_array(data)
+    array,json_string = user_files.mk_array(data)
     path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
 
     with open(path,'wt') as f:
@@ -584,69 +553,79 @@ def add_callbacks(app):
     return dict(content=json_string, filename="array.json")
 
 
-
-
-
   @app.callback([Output("nerve-x","value"), 
                  Output("nerve-y","value"), 
                  Output("nerve-r","value"), 
                  Output("nerve-name","children"),
-                 Output("nerve-name","style")],
+                 Output("nerve-name","style"),
+                 Output("axon-pop-dropdown","value"),
+                 Output("anatomy-json","data")], 
                  Input("upload-nerve","filename"),
                  Input("upload-nerve","contents"),
                  State("nerve-x","value"),
                  State("nerve-y","value"),
                  State("nerve-r","value"),
                  State("nerve-name","children"),
-                 State("nerve-name","style"), prevent_initial_call=True)
-  def upload_nerve(name,data,nx,ny,nr,nn,nn_style):
+                 State("nerve-name","style"),
+                 State("axon-pop-dropdown","value"),
+                 State("anatomy-json","data"),
+                 prevent_initial_call=True)
+  def upload_nerve(name,data,nx,ny,nr,nn,nn_style,ap,anat):
+
+    USER = get_user_ID()
+    SESH = get_session_ID()
+
     if name is None or data is None:
 
-      generate_user_files.check_existing_nerve_files()
+      anat,config = user_files.check_existing_nerve_files(USER,SESH)
+
+      if anat is None: raise PreventUpdate    
+
+      print('TODO: pre-load anatomy files')
 
 
-      raise PreventUpdate    
     clicked = which_input()
 
     if clicked == "download-file":
       u_list = list_deviceFamilies()
-      return u_list,u_list[-1]['value']      
+      return u_list,u_list[-1]['value']
 
     file_ext = os.path.splitext(name)
 
     if file_ext[1] in ['.json']:
-      path = '../data/u/{}/{}/nerve.json'.format(get_user_ID(),get_session_ID())
+      path = '../data/u/{}/{}/nerve.json'.format(USER,SESH)
     elif file_ext[1] in ['.xml']: 
-      path = '../data/u/{}/{}/nerve.xml'.format(get_user_ID(),get_session_ID())      
+      path = '../data/u/{}/{}/nerve.xml'.format(USER,SESH)      
       nx=0
       ny=0
       nr=0
       nn=os.path.basename(file_ext[0])
       nn_style = {'display':'block'}
     else:
-      print(2,"{}: not a valid file (expected .xml, .json)".format(name))
+      print("{}: not a valid file (expected .xml, .json)".format(name))
       raise PreventUpdate
 
     print('Uploading ' + name + ' --> ' + path)
     save_file(path,data)
-
-    u_list = list_deviceFamilies()
     
     if file_ext[1] in ['.json']:
       with open(path) as f: 
-        n_layout = parse(f)        
-      n_layout = n_layout['nerve']
+        config = user_files.parse(f)        
+      config = config['nerve']
 
-      if "xRotate" in n_layout: nr = n_layout["xRotate"]
-      else:                     nr = 0
-      if "xMove" in n_layout: 
-        nx = n_layout["xMove"][0]
-        ny = n_layout["xMove"][1]
+      if "xRotate" in config: nr = config["xRotate"]
+      else:                   nr = 0
+      if "xMove" in config: 
+        nx = config["xMove"][0]
+        ny = config["xMove"][1]
       else: 
         nx = 0
         ny = 0
+    else:
+      anat = user_files.get_user_XML_contours(USER,SESH)
 
-    return nx,ny,nr,nn,nn_style
+    return nx,ny,nr,nn,nn_style,ap,anat
+
 
   @app.callback([Output("nerve-json","data"),
                  Output("nerve-x-lbl","children"),
@@ -658,12 +637,28 @@ def add_callbacks(app):
                  State("nerve-name","children"))
   def update_nerve_sliders(nx,ny,nr,name):
     dat = {'nerve':{'source':name,'xRotate':nr,'xMove':[nx,ny]}} # other parameters generated at compile
-    print(2,'TODO: read XML and cache into dat[''gfx''] ')
+    print('TODO: read XML and cache into dat[''gfx''] ')
     nxl = "{} µm".format(nx)
     nyl = "{} µm".format(ny)
     nrl = "{}°".format(nr)
     return dat,nxl,nyl,nrl
 
+
+  @app.callback([Output("nerve-x","min"),
+                 Output("nerve-x","max"),
+                 Output("nerve-y","min"),
+                 Output("nerve-y","max")],
+                 Input("anatomy-json","data"))
+  def update_nerve_slider_range(anat):
+    
+    print(anat)
+
+    # x0 = min(anat['nerve'])
+    # x1 = max( ... )
+
+
+
+    return x0,x1,y0,y1
   # @app.callback()
 
 #%%

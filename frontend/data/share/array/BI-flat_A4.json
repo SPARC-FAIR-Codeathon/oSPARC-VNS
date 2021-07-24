@@ -8,7 +8,8 @@
     "carrier": { 
         "c_len": 4.8, 
         "c_wid": 2.9,
-        "c_thickness": 0.8
+        "c_thickness": 0.8,
+        "c_radius": 0.3
     }
   }, 
   "mesh": {
