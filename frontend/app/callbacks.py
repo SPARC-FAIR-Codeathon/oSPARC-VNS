@@ -13,6 +13,7 @@ import base64
 import json
 import math
 import os
+import re
 
 import user_files
 
@@ -58,88 +59,15 @@ def get_user_ID(app=None):
 def get_session_ID(app=None):
     return 1
 
-# what device family did the user last select
-def get_default_dfamily(app):
-    db_query('dfamily','DEFAULTS')
-    return None
+def get_default_session(app=None):
+    return 1
 
-# what nerve class did the user last select
-def get_default_nerveClass(app):
-    db_query('nerveclass','DEFAULTS')
-    return None
-
-# what nerve class did the user last select
-def get_default_runMode(app):
-    db_query('runmode','DEFAULTS')
-    return 'full'
 
 # what is user's email?
 def get_default_email(app):
     db_query('email','USER')
     return None
 
-
-#%%
-#
-# Get menu options for device and deviceFamily lists 
-# 
-#%%
-
-# get list of user-defined devices
-def list_userDevices():
-  my_list = glob(r'../data/u/{}/*/array.json'.format(get_user_ID()))
-
-  print(my_list)
-
-  dev_list = []
-
-  if not my_list: return []
-  for filepath in my_list:
-    with open(filepath) as f:
-      array = user_files.parse(f)
-
-    if isinstance(array,list): array = array[0]
-    try:
-      dev_list.append({"label":array['array']['Name'],"value":filepath})
-    except:
-      print("error parsing user JSON array: "+filepath)
-      print(array)
-
-  return dev_list
-
-# Load device families from /data/share
-def list_deviceFamilies():
-  with open(r'../data/share/array/index.json') as f:
-    arrays = user_files.parse(f)
-
-  dflist = set([a['family'] for a in arrays['list']])
-  dflist = ([{"label":a,"value":a} for a in dflist])
-
-  mylist = list_userDevices()
-  if mylist: dflist.append({"label":"My devices","value":"user"})
-
-  # todo append my-devices    
-  return dflist
-
-# Load devices given family from /data/share
-def list_devices(family):
-  # print(arrays)
-  if family is None: return []
-  if family == 'user': 
-    return list_userDevices()
-
-  with open(r'../data/share/array/index.json') as f:
-    arrays = user_files.parse(f)
-
-  return [{"label":a['name'],"value":a['file']} 
-          for a in arrays['list'] if a['family'] == family]
-
-# Load nerve classes from /data/share
-def list_nerveClasses():
-    with open(r'../data/share/axon/index.json') as f:
-      axons = user_files.parse(f)
-    # print(axons)
-    return([{"label":a["label"],"value":a["value"]} for a in axons['list']])
 
 
 #%% 
@@ -520,9 +448,10 @@ def add_callbacks(app):
                  Output("device-family-dropdown","value")],
                   Input("upload-device","filename"),
                   Input("upload-device","contents"), 
-                  Input("download-device","data"), 
+                  Input("download-device","data"),
+                  State("navbar-session","value"),
                   prevent_initial_call=True)
-  def upload_device(name,data,dl_data):
+  def upload_device(name,data,dl_data,session):
     if name is None or data is None: raise PreventUpdate    
     clicked = which_input()
 
@@ -530,7 +459,7 @@ def add_callbacks(app):
       u_list = list_deviceFamilies()
       return u_list,u_list[-1]['value']      
 
-    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
+    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),session)
     print('Uploading ' + name + ' --> ' + path)
     save_file(path,data)
 
@@ -541,11 +470,12 @@ def add_callbacks(app):
   @app.callback(Output("download-device","data"),
                 Input("btn-save-array","n_clicks"), 
                 State("device-json","data"),
+                State("navbar-session","value"),
                 prevent_initial_call=True)
-  def save_array(n_clicks,data):
+  def save_array(n_clicks,data,session):
 
     array,json_string = user_files.make_ARRAY_json(data)
-    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
+    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),session)
 
     with open(path,'wt') as f:
       f.write(json_string)
@@ -568,18 +498,17 @@ def add_callbacks(app):
                  State("nerve-name","children"),
                  State("nerve-name","style"),
                  State("axon-pop-dropdown","value"),
-                 State("anatomy-json","data"))
-  def upload_nerve(name,data,nx,ny,nr,nn,nn_style,ap,anat):
+                 State("anatomy-json","data"),
+                 State("navbar-session","value"))
+  def upload_nerve(name,data,nx,ny,nr,nn,nn_style,ap,anat,session):
 
     USER = get_user_ID()
-    SESH = get_session_ID()
 
     if name is None or data is None:
 
-      anat,config = user_files.check_existing_nerve_files(USER,SESH)
+      anat,config = user_files.check_existing_nerve_files(USER,session)
 
-      print('TODO: pre-load anatomy files')
-
+      nn = 'last used nerve'
       if anat is None: raise PreventUpdate
       if config is not None and 'nerve' in config:
         config = config['nerve']
@@ -593,8 +522,8 @@ def add_callbacks(app):
           nx = 0
           ny = 0          
         if 'uiAxonPop' in config: ap = config['uiAxonPop']
-
-      nn = 'last used nerve'
+        if 'uifileName' in config: nn = config['uifileName']
+      
       nn_style = {'display':'block'}
 
       return nx,ny,nr,nn,nn_style,ap,anat
@@ -609,9 +538,9 @@ def add_callbacks(app):
     file_ext = os.path.splitext(name)
 
     if file_ext[1] in ['.json']:
-      path = '../data/u/{}/{}/nerve.json'.format(USER,SESH)
+      path = '../data/u/{}/{}/nerve.json'.format(USER,session)
     elif file_ext[1] in ['.xml']: 
-      path = '../data/u/{}/{}/nerve.xml'.format(USER,SESH)      
+      path = '../data/u/{}/{}/nerve.xml'.format(USER,session)      
       nx=0
       ny=0
       nr=0
@@ -639,7 +568,7 @@ def add_callbacks(app):
         ny = 0
       if 'uiAxonPop' in config: ap = config['uiAxonPop']
     else:
-      anat = user_files.get_user_XML_contours(USER,SESH)
+      anat = user_files.get_user_XML_contours(USER,session)
 
     return nx,ny,nr,nn,nn_style,ap,anat
 
@@ -682,8 +611,9 @@ def add_callbacks(app):
                 State("nerve-json","data"),
                 State("device-json","data"),
                 State("axon-pop-dropdown","value"),
+                State("navbar-session","value"),
                 prevent_initial_call=True)
-  def save_nerve_json(n_clicks,data,array,ap):
+  def save_nerve_json(n_clicks,data,array,ap,session):
 
     array = user_files.make_ARRAY_json(array)
     array = array[0]
@@ -698,13 +628,47 @@ def add_callbacks(app):
     nerve['nerve']['uiAxonPop']  = ap
 
     json_string = json.dumps(nerve,indent=2)
-    path = '../data/u/{}/{}/nerve.json'.format(get_user_ID(),get_session_ID())
+    path = '../data/u/{}/{}/nerve.json'.format(get_user_ID(),session)
 
     with open(path,'wt') as f:
       f.write(json_string)
 
     print('got to RETURN')
     return dict(content=json_string, filename="nerve.json")
+
+# implement page routing
+def add_routing(app):
+
+  @app.callback([Output('url','pathname'),
+                 Output('navbar-results','disabled')],
+                 Input('navbar-setup','n_clicks'),
+                 Input('navbar-results','n_clicks'),
+                 Input('navbar-session','value'), 
+                 State('url','pathname'))
+  def on_nav_click(bs,br,session,url):
+
+    clicked = which_input()
+    print("update_navbar: "+clicked)
+
+    if session == -1: # "new session"
+
+      s_list = user_files.list_userSessions()
+      session = max([s['value'] for s in s_list])+1
+
+    r_ok = user_files.has_results(get_user_ID,session)
+
+    if clicked == 'navbar-setup':
+      return "/setup/{}".format(session), not r_ok
+    elif clicked == 'navbar-results':
+      if r_ok: 
+        return "/results/{}".format(session), not r_ok
+      else:
+        return "/setup/{}".format(session), not r_ok
+    else: 
+       stub = re.match(r"/[^/]/",url)
+       if not stub: stub = ['/setup/']
+       return "{}{}".format(stub[0],session), not r_ok
+
 
 #%%
 if __name__ == '__main__':

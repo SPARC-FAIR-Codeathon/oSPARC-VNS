@@ -9,8 +9,9 @@ import os
 import json
 import xml.etree.ElementTree as et
 import functools
-
 import callbacks
+
+from glob import glob
 
 
 #%%
@@ -67,6 +68,91 @@ def get_MBF_XML_contours(xml_file):
     loop.append({'name': c.attrib['name'], 'xy': xy, 'xr': (xmin,xmax) })
   
   return {"anat": loop} # return as JSONable dict
+
+
+#%%
+#
+# Get menu options for device and deviceFamily lists 
+# 
+#%%
+
+
+# get list of user-defined devices
+def list_userSessions(user=1):
+
+  sessions = glob(r'../data/u/{}/*'.format(user))
+  
+  if not sessions: sessions = [{"label":"Session 1","value":1}]
+
+  for sid in [os.path.basename(p) for p in sessions]:    
+    sessions.append({"label":"Session {}".format(sid),"value":int(sid)})
+
+  sessions.append({"label":"New session","value":-1})
+
+  return sessions
+
+
+
+
+# get list of user-defined devices
+def list_userDevices(user=1):
+  my_list = glob(r'../data/u/{}/*/array.json'.format(user))
+
+  dev_list = []
+
+  if not my_list: return []
+  for filepath in my_list:
+    with open(filepath) as f:
+      array = parse(f)
+
+    if isinstance(array,list): array = array[0]
+    try:
+      dev_list.append({"label":array['array']['Name'],"value":filepath})
+    except:
+      print("error parsing user JSON array: "+filepath)
+      print(array)
+
+  return dev_list
+
+# Load device families from /data/share
+def list_deviceFamilies():
+  with open(r'../data/share/array/index.json') as f:
+    arrays = parse(f)
+
+  dflist = set([a['family'] for a in arrays['list']])
+  dflist = ([{"label":a,"value":a} for a in dflist])
+
+  mylist = list_userDevices()
+  if mylist: dflist.append({"label":"My devices","value":"user"})
+
+  # todo append my-devices    
+  return dflist
+
+# Load devices given family from /data/share
+def list_devices(family,user=1):
+  # print(arrays)
+  if family is None: return []
+  if family == 'user': 
+    return list_userDevices(user)
+
+  with open(r'../data/share/array/index.json') as f:
+    arrays = parse(f)
+
+  return [{"label":a['name'],"value":a['file']} 
+          for a in arrays['list'] if a['family'] == family]
+
+# Load nerve classes from /data/share
+def list_nerveClasses():
+    with open(r'../data/share/axon/index.json') as f:
+      axons = parse(f)
+    # print(axons)
+    return([{"label":a["label"],"value":a["value"]} for a in axons['list']])
+
+
+
+
+
+
 
 
 
@@ -146,4 +232,11 @@ def get_user_XML_contours(user=1,session=1):
 
   path = '../data/u/{}/{}/nerve.xml'.format(user,session)
   return get_MBF_XML_contours(path)
+
+
+
+def has_results(user=1,session=1,file='nerve-recordings.mat'):
+
+  filename = '../data/u/{}/{}/{}'.format(user,session,file)
+  return os.path.exists(filename), filename
 

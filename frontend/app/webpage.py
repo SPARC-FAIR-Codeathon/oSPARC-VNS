@@ -1,6 +1,7 @@
 #%%
 
 from flask import Flask, send_from_directory
+from dash.dependencies import Input, Output, State
 
 import dash
 import dash_core_components as dcc
@@ -12,13 +13,24 @@ import plotly.graph_objs as go
 
 import callbacks
 import graphics
+import user_files
+
 
 #%%
 # Normally, Dash creates its own Flask server internally. By creating our own,
 # we can create a route for downloading files directly:
 server = Flask(__name__)
-app = dash.Dash(server=server, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(server=server, external_stylesheets=[dbc.themes.BOOTSTRAP], 
+                suppress_callback_exceptions=True)
 # ,             external_scripts=["//daybrush.com/moveable/release/latest/dist/moveable.min.js"])
+
+
+# Since we're adding callbacks to elements that don't exist in the app.layout,
+# Dash will raise an exception to warn us that we might be
+# doing something wrong.
+# In this case, we're adding the elements through a callback, so we can ignore
+# the exception.
+# app = dash.Dash(__name__, )
 
 
 #%%
@@ -33,16 +45,34 @@ def download(path):
 
 # I've reorganised this into a condensed form so we can see more of it in a single screen. Excessive whitespace is an anti-pattern.
 
+nav_bar = dbc.Card([
+  html.Div([
+    dbc.Button("MODEL SETUP", id='navbar-setup', color="secondary", outline=True,
+                       className="mr-1",n_clicks=0,size="sm"), 
+    dbc.Button("MODEL RESULTS", id='navbar-results', color="secondary", outline=True,
+                       className="mr-1",n_clicks=0,size="sm",disabled=True),
+   ],style={'text-align':'left','width':'75%'}),
+  html.Div([ 
+        dcc.Dropdown(id="navbar-session", 
+                     options = user_files.list_userSessions(), value = 1, 
+                     placeholder="Select a Device Family", persistence=True, clearable=False), 
+
+    ],style={'text-align':'right','width':'25%'})
+],body=True, style={"background-color": "#eeeeee","padding":"6px"})
+
+
+
+
 # first_col is the array device controls 
-app.layout = dbc.Row([
+page_SETUP = dbc.Row([
   dbc.Col([
     dbc.Card([ 
       dbc.CardHeader("Select device"),
       dbc.CardBody([
         dcc.Dropdown(id="device-family-dropdown", 
-                     options = callbacks.list_deviceFamilies(), value = callbacks.get_default_dfamily(app), 
+                     options = user_files.list_deviceFamilies(), 
                      placeholder="Select a Device Family", persistence=True), 
-        dcc.Dropdown(id="device-dropdown", options = callbacks.list_devices(None), value = None, 
+        dcc.Dropdown(id="device-dropdown", options = user_files.list_devices(None), value = None, 
                      placeholder="Select a Device", disabled=False, persistence=True),
         dcc.Upload(id="upload-device", className="uploada",
                    children=html.Div(
@@ -87,7 +117,7 @@ app.layout = dbc.Row([
   dbc.Col( 
     html.Div([
       html.Img(src="",id="view-device"), 
-    ],style={'margin':'auto','display':'block','align':'center'}), id="viewport-col", width=6), # middle 
+    ],style={'margin':'auto','display':'block','text-align':'center'}), id="viewport-col", width=6), # middle 
   #%%
   dbc.Col([
     dbc.Card([
@@ -105,10 +135,10 @@ app.layout = dbc.Row([
           dbc.InputGroupAddon("0 µm",addon_type="append",id='nerve-y-lbl',style={"height":"30px"})],
           style={'height':'34px',"display":"grid","grid-template-columns": "85% 15%"}),
         html.Div([html.Div([
-          dcc.Slider(id="nerve-r",min=-360,max=360,step=5,value=0,updatemode='drag')],style={"margin-top":"9px"}),
+          dcc.Slider(id="nerve-r",min=-180,max=180,step=5,value=0,updatemode='drag')],style={"margin-top":"9px"}),
           dbc.InputGroupAddon("0°",addon_type="append",id='nerve-r-lbl',style={"height":"30px"})],
           style={'height':'34px',"display":"grid","grid-template-columns": "85% 15%"}),        
-        dcc.Dropdown(id="axon-pop-dropdown", options = callbacks.list_nerveClasses(),persistence=True),
+        dcc.Dropdown(id="axon-pop-dropdown", options = user_files.list_nerveClasses(),persistence=True),
         dbc.Button("Save Nerve Configuration", id='btn-save-nerve', color="primary", outline=True,
                        className="mr-1",n_clicks=0),
         dec.Download(id="download-nerve") # invisible component         
@@ -119,9 +149,8 @@ app.layout = dbc.Row([
       dbc.CardBody([
         dcc.Dropdown(id="run-mode-dropdown", 
                      options = [{'label':'Nerve Recording','value':'full'}, 
-                                {'label':'Fields only (faster)','value':'fast'}], 
-                     value = callbacks.get_default_runMode(app), 
-                     clearable = False), 
+                                {'label':'Fields only (faster)','value':'fast'}],
+                     clearable = False, persistence=True), 
         html.Div([
             html.Div("simulated spike-rate (imp/s/axon):"),
             dbc.Input(id="spike-rate",placeholder="flat[0.2,2]", type="text")],
@@ -129,21 +158,45 @@ app.layout = dbc.Row([
         html.Div("If you would like your results emailed to you, please enter your email below:"),
         dbc.InputGroup([
           dbc.InputGroupAddon("Email", addon_type="prepend"),
-          dbc.Input(id="user-email",value=callbacks.get_default_email(app),type="email",placeholder="(optional)"),
+          dbc.Input(id="user-email",type="email",placeholder="(optional)"),
             ],className="mb-3"),
         dbc.Button("Run Model", id="btn-run", size="lg", color = "success", className="mr-1")
      ]) # CardBody: run control
     ])], width=3), # Right column
+  ]) # layout SETUP page
+
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content'),
+    dcc.Store(id="user-data",storage_type='local'),
     dcc.Store(id="device-json", storage_type='session'),
     dcc.Store(id="nerve-json", storage_type='session'),
     dcc.Store(id="anatomy-json", storage_type='memory'),
-  ]) # layout
+    dcc.Store(id="results-json", storage_type='memory'),
+])
 
+callbacks.add_routing(app)
 callbacks.add_callbacks(app)
 graphics.add_callbacks(app)
 # middle_layer.add_callbacks(app)
 
+
+# implement routing
+@app.callback(Output('page-content', 'children'), 
+              Input('url', 'pathname'))
+def display_page(url):
+
+  if url.startswith('/setup'):
+      return [nav_bar, page_SETUP]
+  elif url.startswith('/results'):
+      return [nav_bar, page_SETUP]
+  else:
+      return nav_bar
+    # You could also return a 404 "URL not found" page here
+
 #%%
 if __name__ == '__main__':
     app.run_server(debug=False)
+
+
 
