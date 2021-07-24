@@ -14,6 +14,7 @@ import plotly.graph_objs as go
 import callbacks
 import graphics
 import user_files
+import view_results
 
 
 #%%
@@ -43,7 +44,6 @@ def download(path):
 
 #%% 
 
-# I've reorganised this into a condensed form so we can see more of it in a single screen. Excessive whitespace is an anti-pattern.
 
 nav_bar = dbc.Card([
   dbc.Row([dbc.Col([
@@ -62,10 +62,10 @@ nav_bar = dbc.Card([
 
 
 
+# I reorganised this into a condensed form so we can see more of it in a single screen. Excessive whitespace is an anti-pattern.
 
-# first_col is the array device controls 
-page_SETUP = dbc.Row([
-  dbc.Col([
+page_SETUP = dbc.Row([ # model set-up controls 
+  dbc.Col([ # first_col is the array device controls 
     dbc.Card([ 
       dbc.CardHeader("Select device"),
       dbc.CardBody([
@@ -165,9 +165,44 @@ page_SETUP = dbc.Row([
     ])], width=3), # Right column
   ]) # layout SETUP page
 
+
+
+# first_col is the array device controls 
+page_RESULT = html.Div([ dbc.Row([ # first row is graphics
+  dcc.Graph(figure=None,id="results-wave")], style={"height":"75vh"}),   
+  # dbc.Row([]) for graphics controls ?
+  dbc.Row([
+    dbc.Col([dbc.Card([
+      dcc.Dropdown(id="result-file-dropdown", 
+                     options = user_files.list_resultsFiles(), 
+                     placeholder="Select a Device Family", persistence=True), 
+        html.Div([
+          dcc.Dropdown(id="result-trace", 
+                       options = view_results.list_traces(None), 
+                       placeholder="Select a Trace", persistence=True,multi=False), 
+          dcc.Dropdown(id="result-epoch", 
+                       options = view_results.list_epochs(None), 
+                       placeholder="Select a Trace", persistence=True,multi=False), 
+        ],id="show-epoch-controls",style={"display":"none"}),
+      ],body=True)],width=4,), 
+    dbc.Col([dbc.Card([html.Div([
+        dcc.Checklist(id="result-axons",options = view_results.list_axon_populations(None),value=None),
+        html.Hr(),
+        dcc.Checklist(id="result-fascicles",options = view_results.list_fascicles(None),value=None)
+        ],id="show-axon-controls",style={"display":"none"}),
+      ],body=True)],width=4,), 
+    dbc.Col([dbc.Card([html.Div([
+        dcc.Dropdown(id="wave-elec-active",options = view_results.list_electrodes(None),value=None),      
+        dcc.Dropdown(id="wave-elec-reference",options = view_results.list_electrodes(None),value=None)
+        ],id="show-elec-controls",style={"display":"none"}),
+      ],body=True)],width=4,)
+    ],style={"height":"20vh"}) 
+  ])
+
+
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content'),
+    dbc.Container(html.Div(id='page-content')),
     dcc.Store(id="user-data",storage_type='local'),
     dcc.Store(id="device-json", storage_type='session'),
     dcc.Store(id="nerve-json", storage_type='session'),
@@ -175,24 +210,28 @@ app.layout = html.Div([
     dcc.Store(id="results-json", storage_type='memory'),
 ])
 
+#%%
+
 callbacks.add_routing(app)
 callbacks.add_callbacks(app)
 graphics.add_callbacks(app)
 # middle_layer.add_callbacks(app)
 
-
+#%%
 # implement routing
 @app.callback(Output('page-content', 'children'), 
               Input('url', 'pathname'))
 def display_page(url):
 
+  return page_SETUP
+
   if url.startswith('/setup'):
       return [nav_bar, page_SETUP]
   elif url.startswith('/results'):
-      return [nav_bar, page_SETUP]
+      return [nav_bar, page_RESULT]
   else:
       return nav_bar
-    # You could also return a 404 "URL not found" page here
+    # could also return a 404 "URL not found" page here
 
 #%%
 if __name__ == '__main__':

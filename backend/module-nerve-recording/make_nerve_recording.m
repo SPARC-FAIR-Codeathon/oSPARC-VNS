@@ -393,7 +393,7 @@ data.units.waves_configuration = 'monopolar recording';
 filename = tools.file('get','out~/nerve-recording (%d).mat','next');
 
 fprintf('Combining waves files into %s\n', filename)
-save(filename,'-struct','data')
+save(filename,'-struct','data','-v7.3')
 
     
     

@@ -105,9 +105,9 @@ def update_electrodePositions(mode,this,e_select,ex=None,ey=None,ez=None):
   if mode == 'GET': # update ex ey ez from 'this'
 
     print('GET elec-xyz:')
-    print(e_select)      
+    print(e_select)
 
-    if len(e_select) == 1:
+    if e_select is not None and len(e_select) == 1:
       s = e_select[0]
       ex = this['array']['ElectrodePositions'][s][0]
       ey = this['array']['ElectrodePositions'][s][1]
@@ -644,13 +644,13 @@ def add_routing(app):
                  Output('navbar-results','disabled')],
                  Input('navbar-setup','n_clicks'),
                  Input('navbar-results','n_clicks'),
-                 Input('navbar-session','value'),                  
+                 Input('navbar-session','value'),
                  State('navbar-session','options'),
                  State('url','pathname'))
   def on_nav_click(bs,br,session,ses_list,url):
 
     clicked = which_input()
-    print("update_navbar: "+clicked)
+    # print("update_navbar: "+clicked)
 
     if session == ses_list[-1]['value']: # "new session"
 
@@ -661,9 +661,7 @@ def add_routing(app):
       if not os.path.exists(session_path):
         os.mkdir(session_path)
 
-    r_ok = user_files.has_results(get_user_ID(),session)
-    print(session)
-    print(r_ok)
+    r_ok = user_files.has_results(get_user_ID(),session)    
 
     if clicked == 'navbar-setup': url = "/setup/{}".format(session)
     elif clicked == 'navbar-results': 
@@ -679,8 +677,9 @@ def add_routing(app):
 
 
 #%%
-if __name__ == '__main__':
 
+if __name__ == '__main__':
+  # run in debug modew
   import webpage
   webpage.app.run_server(debug=True)
 

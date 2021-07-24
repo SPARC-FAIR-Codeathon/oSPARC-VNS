@@ -149,10 +149,11 @@ def list_nerveClasses():
     return([{"label":a["label"],"value":a["value"]} for a in axons['list']])
 
 
+def list_resultsFiles(user=1,session=1):
 
-
-
-
+  mat_files = glob(r'../data/u/{}/{}/nerve-recording*.mat'.format(user,session))
+  if not mat_files: return None
+  return [os.path.basename(p) for p in mat_files]
 
 
 
@@ -205,9 +206,6 @@ def make_ARRAY_json(array):
 
 
 
- 
-
-
 
 def check_existing_nerve_files(user=1,session=1):
 
@@ -235,11 +233,9 @@ def get_user_XML_contours(user=1,session=1):
 
 
 
-def has_results(user=1,session=1,file='nerve-recording*.mat'):
+def has_results(user=1,session=1):
 
-  filename = '../data/u/{}/{}/{}'.format(user,session,file)
-  print(filename)
-  filename = glob(filename)
-
-  return len(filename) > 0, filename
+  file_list = list_resultsFiles(user,session)
+  if not file_list: return False, list()
+  else: return True, file_list
 
