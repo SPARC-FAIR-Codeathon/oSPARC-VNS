@@ -542,9 +542,9 @@ def add_callbacks(app):
                 Input("btn-save-array","n_clicks"), 
                 State("device-json","data"),
                 prevent_initial_call=True)
-  def make_local_array(n_clicks,data):
+  def save_array(n_clicks,data):
 
-    array,json_string = user_files.mk_array(data)
+    array,json_string = user_files.make_ARRAY_json(data)
     path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
 
     with open(path,'wt') as f:
@@ -654,7 +654,6 @@ def add_callbacks(app):
                  State("nerve-name","children"))
   def update_nerve_sliders(nx,ny,nr,name):
     dat = {'nerve':{'source':name,'xRotate':nr,'xMove':[nx,ny]}} # other parameters generated at compile
-    print('TODO: read XML and cache into dat[''gfx''] ')
     nxl = "{} µm".format(nx)
     nyl = "{} µm".format(ny)
     nrl = "{}°".format(nr)
@@ -682,26 +681,34 @@ def add_callbacks(app):
                 Input("btn-save-nerve","n_clicks"), 
                 State("nerve-json","data"),
                 State("device-json","data"),
+                State("axon-pop-dropdown","value"),
                 prevent_initial_call=True)
-  def make_local_array(n_clicks,data,array):
+  def save_nerve_json(n_clicks,data,array,ap):
 
-    array, = user_files.mk_array(array)
+    array = user_files.make_ARRAY_json(array)
+    array = array[0]
 
-    print('onSAVE')
-    print(array)
+    r = data['nerve']['xRotate']
+    m = data['nerve']['xMove']
+    z = array['mesh']['DomainSize']
 
-    print(data)
+    nerve,json_string = user_files.make_NERVE_json(r,m[0],m[1],z[0],lc=0.1)
 
-    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
+    nerve['nerve']['uifileName'] = data['nerve']['source']
+    nerve['nerve']['uiAxonPop']  = ap
+
+    json_string = json.dumps(nerve,indent=2)
+    path = '../data/u/{}/{}/nerve.json'.format(get_user_ID(),get_session_ID())
 
     with open(path,'wt') as f:
       f.write(json_string)
 
-    return dict(content=json_string, filename="array.json")
+    print('got to RETURN')
+    return dict(content=json_string, filename="nerve.json")
 
 #%%
 if __name__ == '__main__':
 
   import webpage
-  webpage.app.run_server(debug=True, dev_tools_hot_reload=False)
+  webpage.app.run_server(debug=True)
 
