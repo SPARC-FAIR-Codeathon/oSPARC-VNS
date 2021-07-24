@@ -61,8 +61,8 @@ def get_MBF_XML_contours(xml_file):
     
     xy = [(float(p.attrib['x']),-float(p.attrib['y'])) for p in c.findall('{*}point')]
 
-    xmin = min([x(0) for x in xy])
-    xmax = max([x(0) for x in xy])
+    xmin = min([x[0] for x in xy])
+    xmax = max([x[0] for x in xy])
 
     loop.append({'name': c.attrib['name'], 'xy': xy, 'xr': (xmin,xmax) })
   
@@ -125,12 +125,12 @@ def make_ARRAY_json(array):
 
 def check_existing_nerve_files(user=1,session=1):
 
-  filename = '../data/u/{}/{}/nerve.xml'.format(USER,SESH)
+  filename = '../data/u/{}/{}/nerve.xml'.format(user,session)
   if not os.path.exists(filename): return None,None
 
   anat = get_MBF_XML_contours(filename)
 
-  filename = '../data/u/{}/{}/nerve.json'.format(USER,SESH)
+  filename = '../data/u/{}/{}/nerve.json'.format(user,session)
   if not os.path.exists(filename): 
     return anat,make_NERVE_json() # default values
 

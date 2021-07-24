@@ -57,7 +57,7 @@ def elec_xy(d, eid):
         a = d['ElectrodeAngle'][eid]*math.pi/180
         if a:
             z = [epos[1]+elwh[1]*u/2 for u in [1,-1,-1,1,1]]
-            x = [x*math.cos(a)+z*math.sin(a) for x,z in zip(x,z)]
+            x = [x*math.cos(a)-z*math.sin(a) for x,z in zip(x,z)]
             l = '--'
     
     return x, y, l
@@ -65,16 +65,60 @@ def elec_xy(d, eid):
 # Electrode view 2 (yz)
 def elec_yz(d, eid):
 
+  etype = d['ElectrodeTypeIndex'][eid]-1
+  epos = d['ElectrodePositions'][eid]
+  elwh = d['ElectrodeDimensions']
+  if 'ElectrodeAngle' in d:
+        erot = d['ElectrodeAngle'][eid]*math.pi/180
+  else: erot = 0
+  
+  if isinstance(elwh[0],list):
+    elwh = elwh[etype]
 
-    print('TODO elec_yz')
-
+  if 'ElectrodeKind' in d: 
+    if isinstance(d['ElectrodeKind'],list):
+      if etype < len(d['ElectrodeKind']):
+        ekind = d['ElectrodeKind'][etype]
+      else:
+        ekind = d['ElectrodeKind'][0]
+    else: # not a list
+      ekind = d['ElectrodeKind']
+  else: ekind = 'rect'
+  
+  if ekind.startswith('circum'):
+    
+     radius = (d['carrier']['cuff_IDx']/2+d['InsetDepth'])  
+     
+     a = linspace(-elwh[2]/radius/2, 
+                   elwh[2]/radius/2, 33).tolist()
+     
+     x = [radius*math.sin(a-erot) for a in a]
+     y = [radius*math.cos(a-erot) for a in a]
+     
+     radius = radius + elwh[1]
+     
+     x.extend([radius*math.sin(-a-erot) for a in a])
+     y.extend([radius*math.cos(-a-erot) for a in a])
+     
+  else:    
+      
+    x0 = [epos[2]+a*elwh[2]/2 for a in [-1,-1,1,1]]
+    y0 = [epos[1]-d['InsetDepth']-a*elwh[1] for a in [0,1,0,1]]
+    
+    x = [x*math.cos(erot)-y*math.sin(erot) for x,y in zip(x0,y0)]
+    y = [y*math.cos(erot)+x*math.sin(erot) for x,y in zip(x0,y0)]
+    
+    x = [x[u] for u in [0,1,3,2,0]]
+    y = [y[u] for u in [0,1,3,2,0]]
+      
+  return x,y
 
 
 def rounded_rect(w,h,r):
         
-    a = linspace(0,math.pi/2,16)
+    a = linspace(0,math.pi/2,16).tolist()
     xc = w/2 - r
-    yc = w/2 - r
+    yc = h/2 - r
 
     x =      [ r*math.cos(a)+xc for a in a]
     x.extend([-r*math.sin(a)-xc for a in a])
@@ -104,37 +148,50 @@ def find_centroid(c):
         
     return (sum(x0)/n, sum(y0)/n)
 
-def apply_xForm(anat,xf)
+def apply_xForm(anat,xf):
 
-  if xf is None: return anat
+  if xf is None or anat is None: return anat
   if 'nerve' in xf: xf = xf['nerve']
 
-  xy0 = find_centroid(anat['anat']) # find xy0, needed for rotate
+  try:
+    xy0 = find_centroid(anat['anat']) # find xy0, needed for rotate
+  except:
 
-  print(anat)
-  print(xf)
+    print('BEGIN DEBUG apply_xForm info')
+    print(anat)
+    print(xf)
+    print('END DEBUG apply_xForm info')
+
 
   for u in range(0,len(anat['anat'])):
 
-    x = [xy[0] for xy in anat['anat'][u]['xy']]
-    y = [xy[1] for xy in anat['anat'][u]['xy']]
+    xy = anat['anat'][u]['xy']
+    
 
     if 'xRotate' in xf:
       a = xf['xRotate']/180*math.pi
       x = [math.cos(a)*(xy[0]-xy0[0]) - 
-           math.sin(a)*(xy[1]-xy0[1]) + xy0[0] for xy in c[u]['xy']]
+           math.sin(a)*(xy[1]-xy0[1]) + xy0[0] for xy in xy]
       y = [math.sin(a)*(xy[0]-xy0[0]) + 
-           math.cos(a)*(xy[1]-xy0[1]) + xy0[1] for xy in c[u]['xy']]
+           math.cos(a)*(xy[1]-xy0[1]) + xy0[1] for xy in xy]
+    else: 
+      x = [u[0] for u in xy]
+      y = [u[1] for u in xy]
 
     if 'xMove' in xf:
       x = [x+xf['xMove'][0] for x in x]
       y = [y+xf['xMove'][1] for y in y]
 
-    xmin = min([x(0) for x in xy])
-    xmax = max([x(1) for x in xy])
 
     anat['anat'][u]['xy'] = [(x,y) for x,y in zip(x,y)]
-    anat['anat'][u]['xr'] = (xmin,xmax)
+    anat['anat'][u]['xr'] = (min(x),max(x))
+
+  if 'zRange' in xf: 
+    if 'info' in anat: 
+          anat['info']['zRange'] = xf['zRange']
+    else: anat['info'] = {'zRange':xf['zRange']}
+    
+  return anat
 
 def mk_ARRAY_subplot(array,nerve,ax):
     
@@ -188,76 +245,131 @@ def mk_ARRAY_subplot(array,nerve,ax):
                         fontweight='bold',fontsize=14)
 
     if nerve is not None:
-
-        print('TODO: show nerve outline')
-        print(nerve)
-
+            
+      zr = ax.get_xlim()
+      x = [zr[u] for u in [0,1,1,0,0]]
+      
+      inner = [obj for obj in nerve['anat'] if 'inner' in obj['name'].lower()]
+      outer = [obj for obj in nerve['anat'] if 'inner' not in obj['name'].lower()]
+      
+      for obj in outer:
+        y = [obj['xr'][u]/1e3 for u in [0,0,1,1,0]]
+        ax.fill(x,y,'#333', '-',alpha=0.2,edgecolor='#333')        
+      
+      ax.set_prop_cycle(None) # reset color sequence
+      
+      for fid in range(0,len(inner)):      
+        y = [inner[fid]['xr'][u]/1e3 for u in [0,0,1,1,0]]
+        h = ax.fill(x,y,alpha=0.3)
+        
+        ax.text(x[1]+0.1, y[0]/2+y[2]/2, 'F%d'%(fid+1), 
+                            color=h[0].get_fc(),
+                            fontsize=14,alpha=1.0)
+        
+        
+        
+        
 def mk_NERVE_subplot(array,nerve,ax):
 
-
-
-
-
-    print('TODO')
-    print(array)
-    print(nerve)
+    ax.set_aspect('equal', 'box')        
+    if 'array' in array: array = array['array']
     
-    ax.set_aspect('equal', 'box')
-    
-    
-    for u in range(0,len(c)):
+    if 'carrier' in array: 
+      c = array['carrier']
+      if 'c_len' in c: # flat
+
+        x = [0,0,-c['c_thickness'],-c['c_thickness'],0]
+        y = [   a*c['c_wid']/2  for a in [1,-1,-1,1,1]]
+        ax.fill(y,x,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)
+
+      else:
+
+        x,y = rounded_rect(c['cuff_IDx']+2*c['cuff_thickness'], 
+                           c['cuff_IDy']+2*c['cuff_thickness'], 
+                           c['cuff_IDr']+c['cuff_thickness'])
         
-        h = plt.plot(x,y,'-')    
+        ax.fill(x,y,'#ccc', hatch='//',edgecolor='k',linewidth=1.15)  
         
-        if 'inner' in c[u]['name'].lower():
-            
-            plt.text(median(x), median(y), 'F%d'%(u+1), 
-                         color=h[0].get_color(),
-                            ha='center',fontweight='bold',fontsize=14)
-        else:
-            h[0].set_color('#bbbbbb')
+        x,y = rounded_rect(c['cuff_IDx'], c['cuff_IDy'], c['cuff_IDr'])
+        ax.fill(x,y,'w',edgecolor='k',linewidth=1.15)
 
-    plt.plot(xy0[0]/1e3,xy0[1]/1e3,'r+')
+    
+    for u in range(0,len(array['ElectrodeTypeIndex'])):
+      x,y = elec_yz(array,u) # get electrode
+      ax.fill(x,y,linewidth=1.15)
+    
+    inner = [obj for obj in nerve['anat'] if 'inner' in obj['name'].lower()]
+    outer = [obj for obj in nerve['anat'] if 'inner' not in obj['name'].lower()]
+    
+    for obj in outer:
+        
+      x = [x[0]/1e3 for x in obj['xy']]
+      y = [x[1]/1e3 for x in obj['xy']]        
+      ax.fill(x,y,'#333', '-',alpha=0.2,edgecolor='#333')
 
-    # render to SVG
-    f = io.BytesIO()
-    plt.savefig(f, format = "svg")
-    return f.getvalue() # svg string
+    ax.set_prop_cycle(None) # reset color sequence
+
+    for u in range(0,len(inner)):
+        
+      x = [x[0]/1e3 for x in inner[u]['xy']]
+      y = [x[1]/1e3 for x in inner[u]['xy']]
+        
+      h = ax.plot(x,y,'-')    
+        
+      ax.text(median(x), median(y), 'F%d'%(u+1), 
+                          color=h[0].get_color(),
+                          ha='center',fontweight='bold',fontsize=14)
+
+    xl = ax.get_xlim()
+    yl = ax.get_ylim()
+    if xl[1] < 1: 
+      xl = [xl[1],xl[1]-0.1]
+      lbl = '100 µm'
+    else:
+      xl = [xl[1],xl[1]-1]
+      lbl = '1 mm'
+
+    ax.plot(xl,[yl[0],yl[0]],'-',color='#333',linewidth=3)
+    ax.text(xl[0]/2+xl[1]/2, yl[0]*1.05-yl[1]*0.05, lbl, 
+                                color='#333',ha='center',va='top' )
 
 
-
-def view_model_inputs(array,nerve):
+def view_model_inputs(array,nerve,xform=None):
 
     if array is None and nerve is None: raise PreventUpdate
 
-    if not isinstance(array, dict ): 
-      filename = array
-      with open(filename) as f: 
-        array = parse(f)
-      
-    if not isinstance(nerve, dict ): 
+    if not isinstance(array, dict): 
       filename = array
       with open(filename) as f: 
         array = parse(f)
     
+    if nerve is None:
+      nerve = {'anat':[]}
+    elif not isinstance(nerve, dict): 
+      filename = nerve
+      with open(filename) as f: 
+        nerve = parse(f)
+        
+    if xform is not None:
+      if not isinstance(xform, dict):
+        filename = xform
+        with open(filename) as f: 
+          xform = parse(f)
+      nerve = apply_xForm(nerve,xform)
       
     if 'array' in array: array = array['array'] # get rid of {mesh}    
-    assert('ElectrodeDimensions' in array) # QC
       
-    # make matplotlib axis and fill
-
-
-    fig, ax = plt.subplots(2,1,num=1, clear=True,'sharex'=True)
-    fig.set_size_inches(8.0, 4.0)
-
-    ax = subplot(2, 1, 1, figure=fig)
+    # make matplotlib figure axes
+    fig, ax = plt.subplots(2,1,num=1, clear=True, 
+                               sharex=True, figsize=(4.8,9.2))
+    
     mk_ARRAY_subplot(array,nerve,ax[0])
-
-    ax = subplot(2, 1, 1, figure=fig)
     mk_NERVE_subplot(array,nerve,ax[1])
 
-    
+    ax[0].set_axis_off()
+    ax[1].set_axis_off()
 
+    fig.tight_layout()
 
 
 
@@ -278,9 +390,26 @@ def add_callbacks(app):
 
     nerve = apply_xForm(anatomy,nerve)
 
-
     view_model_inputs(array,nerve) # make mpl figure
 
     return encode(gcf_to_svg())
 
 
+
+if __name__ == "__main__":
+    
+    
+    array = "../data/u/1/1/array.json"
+    nerve = "../data/u/1/1/nerve.xml"
+    xform = "../data/u/1/1/nerve.json"
+    
+    nerve = user_files.get_MBF_XML_contours(nerve)
+    
+    view_model_inputs(array,nerve,xform)
+  
+    # x,y = elec_yz(array,u) # get electrode
+
+
+
+    
+    

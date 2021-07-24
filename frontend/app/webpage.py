@@ -50,7 +50,7 @@ app.layout = dbc.Row([
                     )), # dcc.upload
         dbc.Button("Save Device Configuration", id='btn-save-array', color="primary", outline=True,
                        className="mr-1",n_clicks=0), 
-        dec.Download(id="download-file") # invisible component 
+        dec.Download(id="download-device") # invisible component 
         ]) # CardBody: device
       ]), 
     dbc.Card([
@@ -67,11 +67,11 @@ app.layout = dbc.Row([
         dbc.Row([
           dbc.Col([dbc.Input(id="elec-x",placeholder="X", type="number", debounce=True, step="Any")]),
           dbc.Col([dbc.Input(id="elec-y",placeholder="Y", type="number", debounce=True, step="Any")]),
-          dbc.Col([dbc.Input(id="elec-z",placeholder="Z", type="number", debounce=True, step="Any")]) ]),
+          dbc.Col([dbc.Input(id="elec-z",placeholder="Z", type="number", debounce=True, step="Any")])],form=True),
         dbc.Row([
           dbc.Col([dbc.Input(id="elec-w",placeholder="W", type="number", debounce=True, step="Any")]), # "width" is parallel to nerve
           dbc.Col([dbc.Input(id="elec-h",placeholder="H", type="number", debounce=True, step="Any")]), # "height" is perpendicular to nerve
-          dbc.Col([dbc.Input(id="elec-d",placeholder="D", type="number", debounce=True, step="Any")       ]) ])
+          dbc.Col([dbc.Input(id="elec-d",placeholder="D", type="number", debounce=True, step="Any")])],form=True)
         ])  # CardBody: Electrode Configuration
       ]),
     dbc.Card([
@@ -80,14 +80,14 @@ app.layout = dbc.Row([
         dbc.Row([
           dbc.Col([dbc.Input(id="outer-x",placeholder="X", type="number", debounce=True, step="Any")]),
           dbc.Col([dbc.Input(id="outer-y",placeholder="Y", type="number", debounce=True, step="Any")]),
-          dbc.Col([dbc.Input(id="outer-z",placeholder="L", type="number", debounce=True, step="Any")]) ])
+          dbc.Col([dbc.Input(id="outer-z",placeholder="L", type="number", debounce=True, step="Any")])],form=True)
         ])  # CardBody: Electrode Carrier
     ])], width=3), # Left column
   #%%
   dbc.Col( 
     html.Div([
-      html.Img(src=graphics.encode(graphics.array_SVG(None,None)),id="view-device"), 
-    ],style={'margin':'auto','display':'block'}), id="viewport-col", width=6), # middle 
+      html.Img(src="",id="view-device"), 
+    ],style={'margin':'auto','display':'block','align':'center'}), id="viewport-col", width=6), # middle 
   #%%
   dbc.Col([
     dbc.Card([
@@ -111,6 +111,7 @@ app.layout = dbc.Row([
         dcc.Dropdown(id="axon-pop-dropdown", options = callbacks.list_nerveClasses(),persistence=True),
         dbc.Button("Save Nerve Configuration", id='btn-save-nerve', color="primary", outline=True,
                        className="mr-1",n_clicks=0),
+        dec.Download(id="download-nerve") # invisible component         
       ]) # CardBody: Nerve Configuration
     ]), 
     dbc.Card([
@@ -144,5 +145,5 @@ graphics.add_callbacks(app)
 
 #%%
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
 

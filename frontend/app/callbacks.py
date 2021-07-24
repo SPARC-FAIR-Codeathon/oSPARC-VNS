@@ -520,13 +520,13 @@ def add_callbacks(app):
                  Output("device-family-dropdown","value")],
                   Input("upload-device","filename"),
                   Input("upload-device","contents"), 
-                  Input("download-file","data"), 
+                  Input("download-device","data"), 
                   prevent_initial_call=True)
   def upload_device(name,data,dl_data):
     if name is None or data is None: raise PreventUpdate    
     clicked = which_input()
 
-    if clicked == "download-file":
+    if clicked == "download-device":
       u_list = list_deviceFamilies()
       return u_list,u_list[-1]['value']      
 
@@ -538,7 +538,7 @@ def add_callbacks(app):
     return u_list,u_list[-1]['value']
   
 
-  @app.callback(Output("download-file","data"),                 
+  @app.callback(Output("download-device","data"),
                 Input("btn-save-array","n_clicks"), 
                 State("device-json","data"),
                 prevent_initial_call=True)
@@ -568,8 +568,7 @@ def add_callbacks(app):
                  State("nerve-name","children"),
                  State("nerve-name","style"),
                  State("axon-pop-dropdown","value"),
-                 State("anatomy-json","data"),
-                 prevent_initial_call=True)
+                 State("anatomy-json","data"))
   def upload_nerve(name,data,nx,ny,nr,nn,nn_style,ap,anat):
 
     USER = get_user_ID()
@@ -579,11 +578,28 @@ def add_callbacks(app):
 
       anat,config = user_files.check_existing_nerve_files(USER,SESH)
 
-      if anat is None: raise PreventUpdate    
-
       print('TODO: pre-load anatomy files')
 
+      if anat is None: raise PreventUpdate
+      if config is not None and 'nerve' in config:
+        config = config['nerve']
 
+        if "xRotate" in config: nr = config["xRotate"]
+        else:                   nr = 0
+        if "xMove" in config: 
+          nx = config["xMove"][0]
+          ny = config["xMove"][1]
+        else: 
+          nx = 0
+          ny = 0          
+        if 'uiAxonPop' in config: ap = config['uiAxonPop']
+
+      nn = 'last used nerve'
+      nn_style = {'display':'block'}
+
+      return nx,ny,nr,nn,nn_style,ap,anat
+
+    # name and data defined
     clicked = which_input()
 
     if clicked == "download-file":
@@ -621,6 +637,7 @@ def add_callbacks(app):
       else: 
         nx = 0
         ny = 0
+      if 'uiAxonPop' in config: ap = config['uiAxonPop']
     else:
       anat = user_files.get_user_XML_contours(USER,SESH)
 
@@ -651,19 +668,40 @@ def add_callbacks(app):
                  Input("anatomy-json","data"))
   def update_nerve_slider_range(anat):
     
-    print(anat)
+    if anat is None: raise PreventUpdate
+    if 'anat' in anat: anat = anat['anat']
 
-    # x0 = min(anat['nerve'])
-    # x1 = max( ... )
+    x0 = min([obj['xr'][0] for obj in anat])
+    x1 = max([obj['xr'][1] for obj in anat])
+    x0 = max([2*x1-x0,x1-2*x0])
+
+    return -x0,x0,-x0,x0
 
 
+  @app.callback(Output("download-nerve","data"),
+                Input("btn-save-nerve","n_clicks"), 
+                State("nerve-json","data"),
+                State("device-json","data"),
+                prevent_initial_call=True)
+  def make_local_array(n_clicks,data,array):
 
-    return x0,x1,y0,y1
-  # @app.callback()
+    array, = user_files.mk_array(array)
+
+    print('onSAVE')
+    print(array)
+
+    print(data)
+
+    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),get_session_ID())
+
+    with open(path,'wt') as f:
+      f.write(json_string)
+
+    return dict(content=json_string, filename="array.json")
 
 #%%
 if __name__ == '__main__':
 
   import webpage
-  webpage.app.run_server(debug=True)
+  webpage.app.run_server(debug=True, dev_tools_hot_reload=False)
 
