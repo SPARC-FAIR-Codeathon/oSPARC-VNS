@@ -9,10 +9,12 @@ import os
 import json
 import xml.etree.ElementTree as et
 import functools
-import callbacks
 
 from glob import glob
 import scipy.io as spio
+
+import numpy as np
+import pandas as pd
 
 
 #%%
@@ -71,16 +73,44 @@ def get_MBF_XML_contours(xml_file):
   return {"anat": loop} # return as JSONable dict
 
 
+#%%
+def get_Ve_matfile(filename,olddata=None):
 
-
-def get_Ve_matfile(filename):
-
-    data = spio.loadmat(filename[0])
+    if filename is None: return olddata
+    if isinstance(filename,list): filename = filename[0]
+    if 'filename' in olddata and olddata['filename'] == filename: return olddata
     
-    print('todo extract the needed data')
-
-
-
+    data = spio.loadmat(filename)
+    
+    output = list()
+        
+    obj_name = data['model'][0,0]['object_name']
+    obj_name = [n[0] for n in obj_name[0]]
+    
+    obj_eidx = data['model'][0][0]['object_id']
+    obj_eidx = [u for n,u in zip(obj_name,obj_eidx[0]) if "Fascicle" in n]
+    obj_name = [n for n in obj_name if "Fascicle" in n]
+    
+    elem_indices = data['model'][0][0]['elems']
+    
+    electrodes = ['elec{}'.format(e+1) for e in range(0,len(ve[0]))]
+    
+    for obj in obj_eidx:
+        
+        nn = elem_indices[obj-1,:]
+        nn = np.unique(nn) - 1
+        ve = data['v_extracellular'][nn,:]
+        xyz = data['model'][0][0]['nodes'][nn,:]
+        
+        df = pd.DataFrame(data = xyz, columns = ['x','y','z'], index=None)        
+        d2 = pd.DataFrame(data = ve, columns = electrodes, index=None)
+        df = df.join(d2)
+        
+        output.append(df)
+    
+    output = dict(zip(obj_name,output))
+    output['filename'] = filename
+    return output
 
 #%%
 #

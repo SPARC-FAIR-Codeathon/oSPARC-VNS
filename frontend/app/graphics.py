@@ -13,7 +13,7 @@ import base64
 from numpy import linspace
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as et
-from plotly.tools import mpl_to_plotly
+import plotly.express as px
 
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
@@ -265,10 +265,7 @@ def mk_ARRAY_subplot(array,nerve,ax):
         ax.text(x[1]+0.1, y[0]/2+y[2]/2, 'F%d'%(fid+1), 
                             color=h[0].get_fc(),
                             fontsize=14,alpha=1.0)
-        
-        
-        
-        
+
 def mk_NERVE_subplot(array,nerve,ax):
 
     ax.set_aspect('equal', 'box')        
@@ -333,7 +330,6 @@ def mk_NERVE_subplot(array,nerve,ax):
     ax.text(xl[0]/2+xl[1]/2, yl[0]*1.05-yl[1]*0.05, lbl, 
                                 color='#333',ha='center',va='top' )
 
-
 def view_model_inputs(array,nerve,xform=None):
 
     if array is None and nerve is None: raise PreventUpdate
@@ -370,6 +366,24 @@ def view_model_inputs(array,nerve,xform=None):
     ax[1].set_axis_off()
 
     fig.tight_layout()
+
+
+
+
+
+
+def view_extracellular_fields(dframe,elec,fasc):
+
+    
+    print(dframe)
+    print(elec)
+    print(fasc)
+    
+    df = px.data.iris()
+    fig = dframe.scatter_3d(df, x='sepal_length', y='sepal_width', z='petal_width',
+                  color='species')
+
+    return fig
 
 
 

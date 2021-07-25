@@ -70,9 +70,10 @@ app.layout = html.Div([
 
 #%%
 
-callbacks.add_routing(app)
-callbacks.add_callbacks(app)
+page_setup.add_callbacks(app)
+
 graphics.add_callbacks(app)
+
 # middle_layer.add_callbacks(app)
 
 #%%
@@ -88,6 +89,43 @@ def display_page(url):
   else:
       return nav_bar
     # could also return a 404 "URL not found" page here
+
+@app.callback([Output('url','pathname'),
+               Output('navbar-session','options'),
+               Output('navbar-results','disabled')],
+               Input('navbar-setup','n_clicks'),
+               Input('navbar-results','n_clicks'),
+               Input('navbar-session','value'),
+               State('navbar-session','options'),
+               State('url','pathname'))
+def on_nav_click(bs,br,session,ses_list,url):
+
+  clicked = page_setup.which_input()
+  # print("update_navbar: "+clicked)
+
+  if session == ses_list[-1]['value']: # "new session"
+
+    s_list = user_files.list_userSessions()
+    ses_list[-1]['label'] = 'Session {}'.format(session)
+    ses_list.append({'label':'New Session','value':session+1})
+    session_path = '../data/u/{}/{}/'.format(1,session)
+    if not os.path.exists(session_path):
+      os.mkdir(session_path)
+
+  r_ok = user_files.has_results(1,session)    
+
+  if clicked == 'navbar-setup': url = "/setup/{}".format(session)
+  elif clicked == 'navbar-results': 
+    if r_ok: url = "/results/{}".format(session)
+    else:    url = "/setup/{}".format(session)
+  else: 
+     stub = re.match(r"/[^/]/",url)
+     if not stub: stub = ['/setup/']
+     url = "{}{}".format(stub[0],session)
+     
+
+  return url, ses_list, not r_ok
+
 
 #%%
 if __name__ == '__main__':
