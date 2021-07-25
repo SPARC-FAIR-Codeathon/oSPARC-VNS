@@ -40,3 +40,5 @@ Using o²S²PARC, this project aims to build tools and example workflows to enab
 
 This project entailed deploying visceral nerve modelling work so that other researchers can utilize these models (and components from these models) to predict performance for new nerves and neural interfaces. The delivered model on o²S²PARC is modular, not monolithic: each component completes a common, discrete modelling task such as finite-element mesh generation from nerve cross-sections. By modularising this code, we hope to help other researchers save time and reduction of reduplication of effort. Our web front-end enables non-experts to construct models for new devices and nerves based on data uploaded to the SPARC DRC, expanding the accessibility of modelling work.
 
+For a detailed list of outcomes, see [outcomes](-/wiki/outcomes). 
+
