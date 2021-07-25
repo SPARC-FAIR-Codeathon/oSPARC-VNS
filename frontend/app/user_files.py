@@ -12,6 +12,7 @@ import functools
 import callbacks
 
 from glob import glob
+import scipy.io as spio
 
 
 #%%
@@ -68,6 +69,17 @@ def get_MBF_XML_contours(xml_file):
     loop.append({'name': c.attrib['name'], 'xy': xy, 'xr': (xmin,xmax) })
   
   return {"anat": loop} # return as JSONable dict
+
+
+
+
+def get_Ve_matfile(filename):
+
+    data = spio.loadmat(filename[0])
+    
+    print('todo extract the needed data')
+
+
 
 
 #%%
@@ -151,7 +163,7 @@ def list_nerveClasses():
 
 def list_resultsFiles(user=1,session=1):
 
-  mat_files = glob(r'../data/u/{}/{}/nerve-recording*.mat'.format(user,session))
+  mat_files = glob(r'../data/u/{}/{}/*.mat'.format(user,session))
   if not mat_files: return None
   return [os.path.basename(p) for p in mat_files]
 
@@ -238,4 +250,11 @@ def has_results(user=1,session=1):
   file_list = list_resultsFiles(user,session)
   if not file_list: return False, list()
   else: return True, file_list
+
+
+def get_results_file(filename):
+
+  if filename is None: return None
+  if "nerve" in filename: 
+    print('load NERVE file not implemented yet')
 
