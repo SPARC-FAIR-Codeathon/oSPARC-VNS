@@ -772,25 +772,22 @@ def add_callbacks(app):
   def run_model(n_clicks,nerve,array,axons,session=1):
     if not n_clicks: raise PreventUpdate
 
-    # save needed files 
+    # Step 1: save needed files 
     user_files.save_json_files(array,nerve,axons,session)
-
     USER = 1
-
-    filename = ["","","",""]
-    filename[0] = "../data/u/{}/{}/array.json".format(USER,session)
-    filename[1] = "../data/u/{}/{}/nerve.xml".format(USER,session)
-    filename[2] = "../data/u/{}/{}/nerve.json".format(USER,session)
-    filename[3] = "../data/share/axon/{}.mat".format(axons)
-
-
+    
+    # filename = ['','','','']
+    # filename[0] = "../data/u/{}/{}/array.json".format(USER,session)
+    # filename[1] = "../data/u/{}/{}/nerve.xml".format(USER,session)
+    # filename[2] = "../data/u/{}/{}/nerve.json".format(USER,session)
+    # filename[3] = "../data/share/axon/{}.mat".format(axons)
+    
     cfg = osparc_api.cfg
-    # upload files
-    input_file_1, input_file_2, input_file_3, input_file_4 = osparc_api.upload_files(cfg)
-        
-    # step 2 
+    input_file_1, input_file_2, input_file_3, input_file_4 = osparc_api.upload_files(cfg, axons, session, USER)
+    
+
+    # step 2: 
     # run nerve_mesh
-            
     nm_results, nm_download_path = osparc_api.run_node(cfg, \
                      [input_file_1, input_file_2, input_file_3],\
                      "simcore/services/comp/nerve-mesh", \
@@ -802,7 +799,7 @@ def add_callbacks(app):
                      "simcore/services/comp/axon-population", \
                      "1.0.2")
             
-    # run
+    # run fields-solver
     es_results, es_download_path = osparc_api.run_node(cfg, \
                      [nm_results],\
                      "simcore/services/comp/eidors-solver", \
