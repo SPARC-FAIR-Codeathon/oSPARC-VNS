@@ -13,8 +13,14 @@ This project consisted of deploying an existing MATLAB-based nerve modelling pip
 
 ### Project aims
 
-SPARC has produced datasets of significant interest (e.g. Quantified Morphology of the Human and Rat Vagus Nerves) for the development and translation of electroceuticals from animal models to patients. These datasets use standardized file formats (MBF-XML, NeuroLucida, MBF Biosciences) which can be re-used to build high-fidelity models for visceral nerve stimulation and recording to predict how device designs and electrical stimulation parameters need to be scaled from pre-clinical rodent models to human patients.
-Using o²S²PARC, this project aims to build tools and example workflows to enable interoperability and re-usability of these and other datasets to predict nerve stimulation thresholds and responses for measured nerve geometries, enabling in-silico evaluation of new devices and stimulation protocols and assessment of how responses change across species. This project entails:
+
+SPARC has produced datasets of significant interest (e.g. Quantified Morphology of the [Human](https://sparc.science/datasets/65?type=dataset) and 
+[Rat Vagus](https://sparc.science/datasets/60?type=dataset) Nerves) for the development and translation of electroceuticals from animal models to patients. 
+These datasets use [standardized file formats](https://www.biorxiv.org/content/10.1101/2020.09.22.306670v1.full) ([MBF-XML](https://www.incf.org/mbf-file-format-v-40), NeuroLucida, MBF Biosciences) which 
+can be re-used to build [high-fidelity models for visceral nerve stimulation and recording](https://gitlab.unimelb.edu.au/lab-keast-osborne-release/ViNERS) to predict how device designs and electrical stimulation parameters 
+need to be scaled from pre-clinical rodent models to human patients. 
+
+Using [o²S²PARC](https://osparc.io/), this project aims to build tools and example workflows to enable interoperability and re-usability of these and other datasets to predict nerve stimulation thresholds and responses for measured nerve geometries, enabling in-silico evaluation of new devices and stimulation protocols and assessment of how responses change across species. This project entails:
 
 - deploying existing model modules (4 modules deployed)
 - developing clear interfaces for nerve and electrode array specification,
@@ -24,21 +30,22 @@ Using o²S²PARC, this project aims to build tools and example workflows to enab
 ### Conceptual workflow
 ![workflow](https://user-images.githubusercontent.com/63089004/126910461-b3c2c36a-7a74-410c-bb86-5435dcb72baa.png)
 
+### Modules
+- [Peripheral Neural Interface Mesher](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-mesher)
+- [EIDORS EM Solver](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-EIDORS-fields)
+- [Axon Population Generator](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-Axon-Populations)
+- [Extracellular Recording Simulator](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-Recording)
+
 ### For Scientists
-- [Using the web interface](link)
-- [Simulation inputs](link)
-- [Simulation outputs](link)
+- [Using the web interface](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/How-to-use-the-web-interface)
 
 ### For Developers
-- [frontend](link)
-- [middle layer](link)
-- [oSPARC modules](link)
-
-
+- [frontend](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/frontend-development-overview)
+- [services](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/services-development-overview)
 
 ### Outcomes
 
 This project entailed deploying visceral nerve modelling work so that other researchers can utilize these models (and components from these models) to predict performance for new nerves and neural interfaces. The delivered model on o²S²PARC is modular, not monolithic: each component completes a common, discrete modelling task such as finite-element mesh generation from nerve cross-sections. By modularising this code, we hope to help other researchers save time and reduction of reduplication of effort. Our web front-end enables non-experts to construct models for new devices and nerves based on data uploaded to the SPARC DRC, expanding the accessibility of modelling work.
 
-For a detailed list of outcomes, see [outcomes](-/wiki/outcomes). 
+For a detailed list of outcomes, see [outcomes](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/Outcomes). 
 
