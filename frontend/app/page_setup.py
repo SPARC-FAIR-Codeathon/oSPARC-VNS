@@ -739,7 +739,7 @@ def add_callbacks(app):
                 State("nerve-json","data"),
                 State("device-json","data"),
                 State("axon-pop-dropdown","value"),
-                State("navbar-session","value")
+                State("navbar-session","value"),
                 prevent_initial_call=True)
   def run_model(n_clicks,nerve,array,axons,session=1):
     if not nc: raise PreventUpdate
@@ -747,10 +747,13 @@ def add_callbacks(app):
     # save needed files 
     user_files.save_json_files(array,nerve,axons,session)
 
-    # array,json_string = user_files.make_ARRAY_json(data)
-    # path = '../data/u/{}/{}/array.json'.format(get_user_ID(),session)
-    # with open(path,'wt') as f:
-    #   f.write(json_string)
+    USER = 1
+
+    filename = ['','','','']
+    filename[0] = "../data/u/{}/{}/array.json".format(USER,session)
+    filename[1] = "../data/u/{}/{}/nerve.xml".format(USER,session)
+    filename[2] = "../data/u/{}/{}/nerve.json".format(USER,session)
+    filename[3] = "../data/share/axon/{}.mat".format(axons)
 
 
     cfg = osparc_api.cfg
