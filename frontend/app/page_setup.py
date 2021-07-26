@@ -621,7 +621,7 @@ def add_callbacks(app):
                  State("anatomy-json","data"),
                  State("navbar-session","value"))
   def upload_nerve(name,data,url,nx,ny,nr,nn,nn_style,ap,anat,session=1):
-
+    print("Start_upload")
     USER = get_user_ID()
 
     if name is None or data is None:
@@ -708,6 +708,7 @@ def add_callbacks(app):
         ny = 0
       if "uiAxonPop" in config: ap = config["uiAxonPop"]
     else:
+      print('calling get_user_XML_contours')
       anat = user_files.get_user_XML_contours(USER,session)
 
     return nx,ny,nr,nn,nn_style,ap,anat
@@ -772,6 +773,9 @@ def add_callbacks(app):
   def run_model(n_clicks,nerve,array,axons,session=1):
     if not n_clicks: raise PreventUpdate
 
+    if isinstance(nerve,list) and nerve: nerve = nerve[0]
+    if isinstance(array,list) and array: array = array[0]
+
     # Step 1: save needed files 
     user_files.save_json_files(array,nerve,axons,session)
     USER = 1
@@ -782,9 +786,12 @@ def add_callbacks(app):
     # filename[2] = "../data/u/{}/{}/nerve.json".format(USER,session)
     # filename[3] = "../data/share/axon/{}.mat".format(axons)
     
+    print('get_config')
     cfg = osparc_api.cfg
+    print('got_config')
     input_file_1, input_file_2, input_file_3, input_file_4 = osparc_api.upload_files(cfg, axons, session, USER)
     
+    print('upload_files done')
 
     # step 2: 
     # run nerve_mesh

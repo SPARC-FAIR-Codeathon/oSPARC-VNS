@@ -14,20 +14,14 @@ import os
 import time
 from pathlib import Path
 import sys
-from page_setup import get_user_ID
 
-os.environ["OSPARC_API_KEY"] = "7d382cb1-0779-562b-8b15-75c9ce7a7178"
-os.environ["OSPARC_API_SECRET"] = "cf80455e-deec-5bfc-bbd2-3e87bc8b3ab2"
+import secrets
+# from page_setup import get_user_ID
 
-try: cfg = osparc.Configuration(
-              username=os.environ["OSPARC_API_KEY"],
-                password=os.environ["OSPARC_API_SECRET"])
-except: 
-    print("missing os.environ[OSPARC_API_KEY, OSPARC_API_SECRET]")
-    cfg = osparc.Configuration(username="*",password='*')
+cfg = secrets.Configuration
 
 
-def upload_files(cfg, axons, session, user):
+def upload_files(cfg, axons, session, user=1):
     with osparc.ApiClient(cfg) as api_client:
         files_api = FilesApi(api_client)
         
@@ -35,9 +29,13 @@ def upload_files(cfg, axons, session, user):
         #ID  = 1
         path = '../data/u/{}/{}/'.format(user,session)
         
+        print('Begin upload: ', files_api.list_files())        
         input_file_1: File = files_api.upload_file(file= path + "array.json")
+        print('array.json uploaded')
         input_file_2: File = files_api.upload_file(file=path + "nerve.xml")
+        print('nerve.xml uploaded')
         input_file_3: File = files_api.upload_file(file = path + "nerve.json" )
+        print('nerve.json uploaded')
         input_file_4 : File = files_api.upload_file(file = "../data/share/axon/{}.mat".format(axons))
         print('Files uploaded : ', files_api.list_files())
 
@@ -54,6 +52,9 @@ def upload_files(cfg, axons, session, user):
     
 #"simcore/services/comp/nerve-mesh", "1.0.2"
 def run_node(cfg, inputs, name, version):
+
+    print('try run_node', name, version)
+
     with osparc.ApiClient(cfg) as api_client:
 
         solvers_api = SolversApi(api_client)

@@ -38,7 +38,7 @@ def parse(file=None,text=None): # json parse
         print("invalid json in {}: {}".format(file,e))
   return None # or: raise
 
-@functools.lru_cache(maxsize=32)
+# @functools.lru_cache(maxsize=32)
 def get_device_json(name,family):
 
   is_user = (family == "user")
@@ -57,19 +57,29 @@ def get_device_json(name,family):
   this["ui"] = {"device":name,"family":family}
   return this
 
-@functools.lru_cache(maxsize=32)
+# @functools.lru_cache(maxsize=32)
 def get_MBF_XML_contours(xml_file):
   
+  print("parsing contours")
   root = et.parse(xml_file).getroot()
   loop = []
   
-  for c in root.findall("{*}contour"):
+  c_list = root.findall("{*}contour")
+  if not c_list: c_list = [n for n in root if 'contour' in n.tag ]
+
+  print('DEBUG:')
+  print(c_list)
+
+  for c in c_list:
     
     nom = c.attrib["name"].lower()
     if "blood" in nom: continue
     if "outer" in nom: continue
     
-    xy = [(float(p.attrib["x"]),-float(p.attrib["y"])) for p in c.findall("{*}point")]
+    p_list = c.findall("{*}point")
+    if not p_list: p_list = [n for n in c if 'point' in n.tag ]
+
+    xy = [(float(p.attrib["x"]),-float(p.attrib["y"])) for p in p_list]
 
     xmin = min([x[0] for x in xy])
     xmax = max([x[0] for x in xy])
@@ -301,9 +311,9 @@ def get_results_file(filename):
 
 def save_json_files(array,nerve,axon_select,session=1):
 
-
-    path = "../data/u/{}/{}/array.json".format(get_user_ID(),session)
-    array,json_string = user_files.make_ARRAY_json(array)
+    user = 1 # get_user_ID()
+    path = "../data/u/{}/{}/array.json".format(user,session)
+    array,json_string = make_ARRAY_json(array)
 
     print("Saving "+path)
     with open(path,"wt") as f:
@@ -313,18 +323,21 @@ def save_json_files(array,nerve,axon_select,session=1):
     m = nerve["nerve"]["xMove"]
     z = array["mesh"]["DomainSize"]
 
-    n2,json_string = user_files.make_NERVE_json(r,m[0],m[1],z[0],lc=0.1)
+    n2,json_string = make_NERVE_json(r,m[0],m[1],z[0],lc=0.1)
 
     n2["nerve"]["uifileName"] = nerve["nerve"]["source"]
     n2["nerve"]["uiAxonPop"]  = axon_select
 
     json_string = json.dumps(nerve,indent=2)
-    path = "../data/u/{}/{}/nerve.json".format(get_user_ID(),session)
+    path = "../data/u/{}/{}/nerve.json".format(user,session)
     print("Saving "+path)
     with open(path,"wt") as f:
       f.write(json_string)
 
     return json_string # dict(content=json_string, filename="nerve.json")
+
+
+
 
 
 
