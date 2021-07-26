@@ -27,10 +27,10 @@ import page_results
 import graphics
 import user_files
 
-# Since we're adding callbacks to elements that don't exist in the app.layout,
+# Since we"re adding callbacks to elements that don"t exist in the app.layout,
 # Dash will raise an exception to warn us that we might be
 # doing something wrong.
-# In this case, we're adding the elements through a callback, so we can ignore
+# In this case, we"re adding the elements through a callback, so we can ignore
 # the exception.
 
 #%%
@@ -46,11 +46,11 @@ def download(path):
 
 nav_bar = dbc.Card([
   dbc.Row([dbc.Col([
-    dbc.Button("MODEL SETUP", id='navbar-setup', color="secondary", outline=True,
-                       className="mr-1",n_clicks=0,size="sm"), 
-    dbc.Button("MODEL RESULTS", id='navbar-results', color="secondary", outline=True,
-                       className="mr-1",n_clicks=0,size="sm"),
-   ],width=9,style={'text-align':'left'}),
+    dbc.Button("MODEL SETUP", id="navbar-setup", color="secondary", outline=True,
+                       className="mr-1",size="sm"), 
+    dbc.Button("MODEL RESULTS", id="navbar-results", color="secondary", outline=True,
+                       className="mr-1",size="sm"),
+   ],width=9,style={"text-align":"left"}),
    dbc.Col([
         dcc.Dropdown(id="navbar-session", 
                      options = user_files.list_userSessions(), value = 1, 
@@ -61,13 +61,13 @@ nav_bar = dbc.Card([
 
 
 app.layout = html.Div([
-    dcc.Location(id='url', refresh=True),
-    html.Div(id='page-content'),
-    dcc.Store(id="user-data",storage_type='local'),
-    dcc.Store(id="device-json", storage_type='session'),
-    dcc.Store(id="nerve-json", storage_type='session'),
-    dcc.Store(id="anatomy-json", storage_type='memory'),
-    dcc.Store(id="results-json", storage_type='memory'),
+    dcc.Location(id="url", refresh=False),
+    html.Div(id="page-content"),
+    dcc.Store(id="user-data",storage_type="local"),
+    dcc.Store(id="device-json", storage_type="session"),
+    dcc.Store(id="nerve-json", storage_type="session"),
+    dcc.Store(id="anatomy-json", storage_type="memory"),
+    dcc.Store(id="results-json", storage_type="memory"),
 ])
 
 #%%
@@ -80,58 +80,56 @@ graphics.add_callbacks(app)
 
 #%%
 # implement routing
-@app.callback(Output('page-content', 'children'), 
-              Input('url', 'pathname'))
+@app.callback(Output("page-content", "children"), 
+              Input("url", "pathname"))
 def display_page(url):
 
-  if url.startswith('/setup'):
+  if url.startswith("/setup"):
       return [nav_bar, page_setup.layout]
-  elif url.startswith('/results'):
+  elif url.startswith("/results"):
       return [nav_bar, page_results.layout]
   else:
       return nav_bar
     # could also return a 404 "URL not found" page here
 
-@app.callback([Output('url','pathname'),
-               Output('navbar-results','disabled'), 
-               Output('navbar-session','options')],
-               Input('navbar-setup','n_clicks'),
-               Input('navbar-results','n_clicks'),
-               Input('navbar-session','value'),
-               State('navbar-session','options'),
-               State('url','pathname'))
+@app.callback([Output("url","pathname"),
+               Output("navbar-results","disabled"), 
+               Output("navbar-session","options")],
+               Input("navbar-setup","n_clicks"),
+               Input("navbar-results","n_clicks"),
+               Input("navbar-session","value"),
+               State("navbar-session","options"),
+               State("url","pathname"))
 def on_nav_click(bs,br,session,ses_list,url):
 
   clicked = page_setup.which_input()
   print("update_navbar: {} [session={}]".format(clicked,session))
 
-  if session == ses_list[-1]['value']: # "new session"
+  if session == ses_list[-1]["value"]: # "new session"
 
     print("NEW SESSION for user {}".format(1))
     s_list = user_files.list_userSessions()
-    ses_list[-1]['label'] = 'Session {}'.format(session)
-    ses_list.append({'label':'New Session','value':session+1})
-    session_path = '../data/u/{}/{}/'.format(1,session)
+    ses_list[-1]["label"] = "Session {}".format(session)
+    ses_list.append({"label":"New Session","value":session+1})
+    session_path = "../data/u/{}/{}/".format(1,session)
     if not os.path.exists(session_path):
       os.mkdir(session_path)
 
   r_ok = user_files.has_results(1,session)  
 
-  if clicked == 'navbar-setup': url = "/setup/{}".format(session)
-  elif clicked == 'navbar-results': 
-    if r_ok: url = "/results/{}".format(session)
-    else:    url = "/setup/{}".format(session)
+  if clicked == "navbar-setup": url = "/setup/{}".format(session)
+  elif clicked == "navbar-results": url = "/results/{}".format(session)    
   else: 
      stub = re.match(r"/[^/]/",url)
-     if not stub: stub = ['/setup/']
+     if not stub: stub = ["/setup/"]
      url = "{}{}".format(stub[0],session)
      
-  print('in session {}, URL is now {} and results is {}'.format(session, url, r_ok))
+  print("in session {}, URL is now {} and results is {}".format(session, url, r_ok))
   return url, (not r_ok), ses_list
 
 
 #%%
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run_server(debug=False)
 
 
