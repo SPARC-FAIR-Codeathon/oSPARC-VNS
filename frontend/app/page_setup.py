@@ -742,7 +742,7 @@ def add_callbacks(app):
                 State("navbar-session","value"),
                 prevent_initial_call=True)
   def run_model(n_clicks,nerve,array,axons,session=1):
-    if not nc: raise PreventUpdate
+    if not n_clicks: raise PreventUpdate
 
     # save needed files 
     user_files.save_json_files(array,nerve,axons,session)
