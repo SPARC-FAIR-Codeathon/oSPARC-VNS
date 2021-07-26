@@ -30,14 +30,18 @@ Using [o²S²PARC](https://osparc.io/), this project aims to build tools and exa
 ### Conceptual workflow
 ![workflow](https://user-images.githubusercontent.com/63089004/126910461-b3c2c36a-7a74-410c-bb86-5435dcb72baa.png)
 
+### Modules
+- [Peripheral Neural Interface Mesher](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-mesher)
+- [EIDORS EM Solver](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-EIDORS-fields)
+- [Axon Population Generator](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-Axon-Populations)
+- [Extracellular Recording Simulator](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/oSPARC-modules-Recording)
+
 ### For Scientists
 - [Using the web interface](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/How-to-use-the-web-interface)
-- [Simulation inputs](link)
-- [Simulation outputs](link)
 
 ### For Developers
-- [frontend](link)
-- [services](link)
+- [frontend](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/frontend-development-overview)
+- [services](https://github.com/SPARC-FAIR-Codeathon/oSPARC-VNS/wiki/services-development-overview)
 
 ### Outcomes
 
