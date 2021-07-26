@@ -725,38 +725,28 @@ def add_callbacks(app):
                 State("axon-pop-dropdown","value"),
                 State("navbar-session","value"),
                 prevent_initial_call=True)
-  def save_nerve_json(n_clicks,data,array,ap,session=1):
+  def save_nerve_json(n_clicks,nerve,array,axons,session=1):
 
-    array = user_files.make_ARRAY_json(array)
-    array = array[0]
-
-    r = data['nerve']['xRotate']
-    m = data['nerve']['xMove']
-    z = array['mesh']['DomainSize']
-
-    nerve,json_string = user_files.make_NERVE_json(r,m[0],m[1],z[0],lc=0.1)
-
-    nerve['nerve']['uifileName'] = data['nerve']['source']
-    nerve['nerve']['uiAxonPop']  = ap
-
-    json_string = json.dumps(nerve,indent=2)
-    path = '../data/u/{}/{}/nerve.json'.format(get_user_ID(),session)
-
-    with open(path,'wt') as f:
-      f.write(json_string)
-
-    print('got to RETURN')
+    json_string = user_files.save_json_files(array,nerve,axons,session)
     return dict(content=json_string, filename="nerve.json")
+
+    
 
 
 
   @app.callback(Output("btn-run","color"),
                 Input("btn-run","n_clicks"),
+                State("nerve-json","data"),
+                State("device-json","data"),
+                State("axon-pop-dropdown","value"),
+                State("navbar-session","value")
                 prevent_initial_call=True)
-  def run_model(nc):
+  def run_model(n_clicks,nerve,array,axons,session=1):
     if not nc: raise PreventUpdate
 
     # save needed files 
+    user_files.save_json_files(array,nerve,axons,session)
+
     # array,json_string = user_files.make_ARRAY_json(data)
     # path = '../data/u/{}/{}/array.json'.format(get_user_ID(),session)
     # with open(path,'wt') as f:
