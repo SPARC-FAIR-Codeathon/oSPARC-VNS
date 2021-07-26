@@ -198,7 +198,9 @@ def list_nerveClasses():
 
 def list_resultsFiles(user=1,session=1):
 
-  mat_files = glob(r'../data/u/{}/{}/*.mat'.format(user,session))
+  # if not session == 1: print('LIST results-files: {}'.format(session))
+  mat_files = glob('../data/u/{}/{}/*.mat'.format(user,session))
+  print(mat_files)
   if not mat_files: return None  
   return([{"label":os.path.basename(p),"value":p} for p in mat_files])
 
@@ -283,8 +285,8 @@ def get_user_XML_contours(user=1,session=1):
 def has_results(user=1,session=1):
 
   file_list = list_resultsFiles(user,session)
-  if not file_list: return False, list()
-  else: return True, file_list
+  if not file_list: return False
+  else: return True
 
 
 def get_results_file(filename):

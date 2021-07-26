@@ -17,7 +17,7 @@ import os
 import re
 
 import user_files
-
+import osparc_api
 
 
 # some utilities 
@@ -748,6 +748,52 @@ def add_callbacks(app):
     print('got to RETURN')
     return dict(content=json_string, filename="nerve.json")
 
+
+
+  @app.callback(Output("btn-run","color"),
+                Input("btn-run","n_clicks"),
+                prevent_initial_call=True)
+  def run_model(nc):
+    if not nc: raise PreventUpdate
+
+    # save needed files 
+    # array,json_string = user_files.make_ARRAY_json(data)
+    # path = '../data/u/{}/{}/array.json'.format(get_user_ID(),session)
+    # with open(path,'wt') as f:
+    #   f.write(json_string)
+
+
+    cfg = osparc_api.cfg
+    # upload files
+    input_file_1, input_file_2, input_file_3, input_file_4 = osparc_api.upload_files(cfg)
+        
+    # step 2 
+    # run nerve_mesh
+            
+    nm_results, nm_download_path = osparc_api.run_node(cfg, \
+                     [input_file_1, input_file_2, input_file_3],\
+                     "simcore/services/comp/nerve-mesh", \
+                     "1.0.2")
+            
+    # run axon-population
+    ap_results, ap_download_path = osparc_api.run_node(cfg, \
+                     [input_file_4, input_file_2, input_file_3],\
+                     "simcore/services/comp/axon-population", \
+                     "1.0.2")
+            
+    # run
+    es_results, es_download_path = osparc_api.run_node(cfg, \
+                     [nm_results],\
+                     "simcore/services/comp/eidors-solver", \
+                     "2.0.2")
+            
+    # nerve recording
+    nr_results, nr_download_path = osparc_api.run_node(cfg, \
+                     [ap_results, es_results],\
+                     "simcore/services/comp/nerve-recording", \
+                     "1.0.1")
+                
+    return "danger" 
 
 #%%
 

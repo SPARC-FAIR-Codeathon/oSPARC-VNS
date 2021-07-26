@@ -49,7 +49,7 @@ nav_bar = dbc.Card([
     dbc.Button("MODEL SETUP", id='navbar-setup', color="secondary", outline=True,
                        className="mr-1",n_clicks=0,size="sm"), 
     dbc.Button("MODEL RESULTS", id='navbar-results', color="secondary", outline=True,
-                       className="mr-1",n_clicks=0,size="sm",disabled=True),
+                       className="mr-1",n_clicks=0,size="sm"),
    ],width=9,style={'text-align':'left'}),
    dbc.Col([
         dcc.Dropdown(id="navbar-session", 
@@ -61,7 +61,7 @@ nav_bar = dbc.Card([
 
 
 app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
+    dcc.Location(id='url', refresh=True),
     html.Div(id='page-content'),
     dcc.Store(id="user-data",storage_type='local'),
     dcc.Store(id="device-json", storage_type='session'),
@@ -93,8 +93,8 @@ def display_page(url):
     # could also return a 404 "URL not found" page here
 
 @app.callback([Output('url','pathname'),
-               Output('navbar-session','options'),
-               Output('navbar-results','disabled')],
+               Output('navbar-results','disabled'), 
+               Output('navbar-session','options')],
                Input('navbar-setup','n_clicks'),
                Input('navbar-results','n_clicks'),
                Input('navbar-session','value'),
@@ -103,10 +103,11 @@ def display_page(url):
 def on_nav_click(bs,br,session,ses_list,url):
 
   clicked = page_setup.which_input()
-  # print("update_navbar: "+clicked)
+  print("update_navbar: {} [session={}]".format(clicked,session))
 
   if session == ses_list[-1]['value']: # "new session"
 
+    print("NEW SESSION for user {}".format(1))
     s_list = user_files.list_userSessions()
     ses_list[-1]['label'] = 'Session {}'.format(session)
     ses_list.append({'label':'New Session','value':session+1})
@@ -114,7 +115,7 @@ def on_nav_click(bs,br,session,ses_list,url):
     if not os.path.exists(session_path):
       os.mkdir(session_path)
 
-  r_ok = user_files.has_results(1,session)    
+  r_ok = user_files.has_results(1,session)  
 
   if clicked == 'navbar-setup': url = "/setup/{}".format(session)
   elif clicked == 'navbar-results': 
@@ -125,8 +126,8 @@ def on_nav_click(bs,br,session,ses_list,url):
      if not stub: stub = ['/setup/']
      url = "{}{}".format(stub[0],session)
      
-
-  return url, ses_list, not r_ok
+  print('in session {}, URL is now {} and results is {}'.format(session, url, r_ok))
+  return url, (not r_ok), ses_list
 
 
 #%%
