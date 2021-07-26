@@ -16,4 +16,5 @@ end
     
 %% EXAMPLE (1): fields for cuff array
 
-make_nerve_recording('','','flat[1]_r1','')
+make_nerve_recording('./input/demo-2/axon-population.mat', ...
+                     './input/demo-2/extracellular-potential (1).mat','flat[1]_r1','')

@@ -36,7 +36,7 @@ end
 
 if isdeployed, warning('off','BIDSfile:notFound'), end
 
-named = @(v) strncmpi(v,varargin,length(v)); 
+named = @(v) strncmpi(v,varargin,length(v));
 tools.file('root',pwd); % set 'root' to this folder
 
 
@@ -48,9 +48,13 @@ if true
     disp('====================================================')
 end
 
-if exist(tools.file('out~\waves'),'dir')
-     rmdir(tools.file('out~\waves'),'s');
-end, mkdir(tools.file('out~\waves')); 
+if any(named('-debug-mergeFiles'))
+    fprintf(' skip mkdir tools.file(out~\waves)\n')
+else 
+    if exist(tools.file('out~\waves'),'dir') 
+         rmdir(tools.file('out~\waves'),'s');
+    end, mkdir(tools.file('out~\waves')); 
+end
 
 inputs = [convert_eidors_file(fields_file) ... 
           unpack_axons_file(axons_file), '-fs', sample_rate]; 
@@ -62,8 +66,9 @@ end
 
 
 %% Determine spiketimes to stimulate
-
-if exist(spikes_file,'file')
+if any(named('-debug-mergeFiles'))
+  fprintf(' skip models.nerve_recording ...\n')
+elseif exist(spikes_file,'file')
   models.nerve_recording(inputs{:}, '-raster', spikes_file )
 else
   %% Parse string command
@@ -356,7 +361,10 @@ for ii = 1:numel(list)
       this.class = pop(ty).axon_type;
       this.axon_info = pop(ty);      
       
-      this.waves{1} = permute(d.waves(:,:,ty,:),[1 2 4 3]); 
+      if ndims(d.waves) == 4 
+           this.waves{1} =         d.waves(:,:,:,ty); 
+      else this.waves{1} = permute(d.waves(:,:,ty),[1 2 4 3]); 
+      end
       this.spikes    = d.raster(ty);
       
       if isempty(data.population), data.population = this;
