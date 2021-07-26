@@ -297,3 +297,35 @@ def get_results_file(filename):
   if "v-extra" in filename:
     return get_Ve_matfile(filename)
 
+
+
+def save_json_files(array,nerve,axon_select,session=1):
+
+
+    path = '../data/u/{}/{}/array.json'.format(get_user_ID(),session)
+    array,json_string = user_files.make_ARRAY_json(array)
+
+    print('Saving '+path)
+    with open(path,'wt') as f:
+      f.write(json_string)
+
+    r = nerve['nerve']['xRotate']
+    m = nerve['nerve']['xMove']
+    z = array['mesh']['DomainSize']
+
+    n2,json_string = user_files.make_NERVE_json(r,m[0],m[1],z[0],lc=0.1)
+
+    n2['nerve']['uifileName'] = nerve['nerve']['source']
+    n2['nerve']['uiAxonPop']  = axon_select
+
+    json_string = json.dumps(nerve,indent=2)
+    path = '../data/u/{}/{}/nerve.json'.format(get_user_ID(),session)
+    print('Saving '+path)
+    with open(path,'wt') as f:
+      f.write(json_string)
+
+    return json_string # dict(content=json_string, filename="nerve.json")
+
+
+
+
