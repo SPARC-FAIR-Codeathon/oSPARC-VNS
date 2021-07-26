@@ -14,6 +14,10 @@ import os
 import time
 from pathlib import Path
 import sys
+from page_setup import get_user_ID
+
+os.environ["OSPARC_API_KEY"] = "7d382cb1-0779-562b-8b15-75c9ce7a7178"
+os.environ["OSPARC_API_SECRET"] = "cf80455e-deec-5bfc-bbd2-3e87bc8b3ab2"
 
 try: cfg = osparc.Configuration(
               username=os.environ["OSPARC_API_KEY"],
@@ -23,22 +27,27 @@ except:
     cfg = osparc.Configuration(username="*",password='*')
 
 
-def upload_files(cfg):
+def upload_files(cfg, axons, session, user):
     with osparc.ApiClient(cfg) as api_client:
         files_api = FilesApi(api_client)
         
+        #session from input
+        #ID  = 1
+        path = '../data/u/{}/{}/'.format(user,session)
         
-        # input_file_1: File = files_api.upload_file(file="D:/Sparc-Codeathon/C-FINE.json")
-        # input_file_2: File = files_api.upload_file(file="D:/Sparc-Codeathon/sub-57_sam-1.xml")
-        # input_file_3: File = files_api.upload_file(file = "D:/Sparc-Codeathon/sub-57_sam-1.json" )
-        # input_file_4 : File = files_api.upload_file(file = "rat-cervical-vagus.mat")
-        # print('Files uploaded : ', files_api.list_files())
+        input_file_1: File = files_api.upload_file(file= path + "array.json")
+        input_file_2: File = files_api.upload_file(file=path + "nerve.xml")
+        input_file_3: File = files_api.upload_file(file = path + "nerve.json" )
+        input_file_4 : File = files_api.upload_file(file = "../data/share/axon/{}.mat".format(axons))
+        print('Files uploaded : ', files_api.list_files())
 
+        
+        """
         input_file_1 : File = files_api.get_file('09c57c07-da11-3bd0-b554-5705d1ea3055')
         input_file_2 : File = files_api.get_file('5fb397b5-5f21-3ab5-9d09-ad41032793e2')
         input_file_3 : File = files_api.get_file('53949ed5-1305-38c1-b640-d6e8f662d2f8')
         input_file_4 : File = files_api.get_file("e2f44558-ec08-3470-93d3-64c08bc9aa69")
-        
+        """
         
         
         return input_file_1, input_file_2, input_file_3, input_file_4
