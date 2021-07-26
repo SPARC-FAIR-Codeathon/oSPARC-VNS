@@ -23,12 +23,20 @@ import pandas as pd
 #
 #%%
 
-def parse(text): # json parse
-  try:
-    return json.load(text)
-  except ValueError as e:
-    print('invalid json: %s' % e)
-    return None # or: raise
+def parse(file=None,text=None): # json parse
+  
+  if text is not None:
+    try:
+      return json.load(text)
+    except ValueError as e:
+      print('invalid json: %s' % e)
+  else:
+    with open(file,'rt') as text:
+      try:
+        return json.load(text)
+      except ValueError as e:
+        print('invalid json in {}: {}'.format(file,e))
+  return None # or: raise
 
 @functools.lru_cache(maxsize=32)
 def get_device_json(name,family):
@@ -41,12 +49,10 @@ def get_device_json(name,family):
       with open(name,'wt') as f: 
         json.dump(name, outfile)        
     else:
-      with open(name,'rt') as f:
-        this = parse(f)
+        this = parse(name)
   else: 
-    file = r'../data/share/array/{}.json'.format(name)      
-    with open(file,'rt') as f:
-      this = parse(f)
+    file = r'../data/share/array/{}.json'.format(name)
+    this = parse(file)
 
   this['ui'] = {'device':name,'family':family}
   return this
@@ -78,7 +84,8 @@ def get_Ve_matfile(filename,olddata=None):
 
     if filename is None: return olddata
     if isinstance(filename,list): filename = filename[0]
-    if 'filename' in olddata and olddata['filename'] == filename: return olddata
+    if olddata is not None:
+      if 'filename' in olddata and olddata['filename'] == filename: return olddata
     
     data = spio.loadmat(filename)
     
@@ -93,23 +100,25 @@ def get_Ve_matfile(filename,olddata=None):
     
     elem_indices = data['model'][0][0]['elems']
     
-    electrodes = ['elec{}'.format(e+1) for e in range(0,len(ve[0]))]
-    
     for obj in obj_eidx:
         
         nn = elem_indices[obj-1,:]
         nn = np.unique(nn) - 1
         ve = data['v_extracellular'][nn,:]
         xyz = data['model'][0][0]['nodes'][nn,:]
-        
+    
+        electrodes = ['elec{}'.format(e+1) for e in range(0,len(ve[0]))]    
         df = pd.DataFrame(data = xyz, columns = ['x','y','z'], index=None)        
         d2 = pd.DataFrame(data = ve, columns = electrodes, index=None)
         df = df.join(d2)
         
-        output.append(df)
+        output.append(df.to_dict())
     
     output = dict(zip(obj_name,output))
     output['filename'] = filename
+    output['electrodes'] = electrodes
+    output['type'] = 've'
+    # print(output)
     return output
 
 #%%
@@ -144,8 +153,8 @@ def list_userDevices(user=1):
 
   if not my_list: return []
   for filepath in my_list:
-    with open(filepath) as f:
-      array = parse(f)
+    
+    array = parse(filepath)
 
     if isinstance(array,list): array = array[0]
     try:
@@ -158,8 +167,8 @@ def list_userDevices(user=1):
 
 # Load device families from /data/share
 def list_deviceFamilies():
-  with open(r'../data/share/array/index.json') as f:
-    arrays = parse(f)
+  
+  arrays = parse(r'../data/share/array/index.json')
 
   dflist = set([a['family'] for a in arrays['list']])
   dflist = ([{"label":a,"value":a} for a in dflist])
@@ -172,30 +181,27 @@ def list_deviceFamilies():
 
 # Load devices given family from /data/share
 def list_devices(family,user=1):
-  # print(arrays)
   if family is None: return []
   if family == 'user': 
     return list_userDevices(user)
-
-  with open(r'../data/share/array/index.json') as f:
-    arrays = parse(f)
+  
+  arrays = parse(r'../data/share/array/index.json')
 
   return [{"label":a['name'],"value":a['file']} 
           for a in arrays['list'] if a['family'] == family]
 
 # Load nerve classes from /data/share
-def list_nerveClasses():
-    with open(r'../data/share/axon/index.json') as f:
-      axons = parse(f)
-    # print(axons)
+def list_nerveClasses():    
+    axons = parse(r'../data/share/axon/index.json')
     return([{"label":a["label"],"value":a["value"]} for a in axons['list']])
 
 
 def list_resultsFiles(user=1,session=1):
 
   mat_files = glob(r'../data/u/{}/{}/*.mat'.format(user,session))
-  if not mat_files: return None
-  return [os.path.basename(p) for p in mat_files]
+  if not mat_files: return None  
+  return([{"label":os.path.basename(p),"value":p} for p in mat_files])
+
 
 
 
@@ -260,8 +266,7 @@ def check_existing_nerve_files(user=1,session=1):
   if not os.path.exists(filename): 
     return anat,make_NERVE_json() # default values
 
-  with open(filename,'rt') as f:
-    config = parse(f)
+  config = parse(filename)
 
   return anat,config 
 
@@ -287,4 +292,6 @@ def get_results_file(filename):
   if filename is None: return None
   if "nerve" in filename: 
     print('load NERVE file not implemented yet')
+  if "v-extra" in filename:
+    return get_Ve_matfile(filename)
 

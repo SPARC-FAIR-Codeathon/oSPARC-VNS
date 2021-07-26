@@ -3,6 +3,8 @@
 from flask import Flask, send_from_directory
 from dash.dependencies import Input, Output, State
 
+import os
+import re
 import dash
 import dash_core_components as dcc
 import dash_html_components as html #elements of wireframe
@@ -51,7 +53,7 @@ nav_bar = dbc.Card([
    ],width=9,style={'text-align':'left'}),
    dbc.Col([
         dcc.Dropdown(id="navbar-session", 
-                     options = user_files.list_userSessions(), value = [], 
+                     options = user_files.list_userSessions(), value = 1, 
                      placeholder="Select Session", persistence=True, clearable=False), 
 
     ],width=3)
@@ -60,7 +62,7 @@ nav_bar = dbc.Card([
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
-    dbc.Container(html.Div(id='page-content')),
+    html.Div(id='page-content'),
     dcc.Store(id="user-data",storage_type='local'),
     dcc.Store(id="device-json", storage_type='session'),
     dcc.Store(id="nerve-json", storage_type='session'),
@@ -71,7 +73,7 @@ app.layout = html.Div([
 #%%
 
 page_setup.add_callbacks(app)
-
+page_results.add_callbacks(app)
 graphics.add_callbacks(app)
 
 # middle_layer.add_callbacks(app)

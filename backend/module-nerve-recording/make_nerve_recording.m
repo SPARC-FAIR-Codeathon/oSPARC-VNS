@@ -20,9 +20,10 @@ if nargin < 3, spikes_string = 'flat[0.2,2]';
 end
 
 if nargin < 4 || (isempty(spikes_string) && isempty(spikes_file))
-  spikes_file = './input/demo/example.xml'; 
-  fprintf('Arg 4 not set, using demo raster xml file: ')
-  fprintf('%s\n', spikes_file)
+    spikes_file = ''; 
+  % spikes_file = './input/demo/example.xml'; 
+  % fprintf('Arg 4 not set, using demo raster xml file: ')
+  % fprintf('%s\n', spikes_file)
 elseif ~isempty(spikes_string) && ~contains(spikes_string,'file')
   spikes_file = ''; 
 end

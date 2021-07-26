@@ -31,7 +31,7 @@
 	"value": [0.570, 0.088, 0.088], 
 	"unit": "S/m", 
 	"reference": "Ranck (1965)"
-  },,{
+  },{
 	"name": "Epineurium",
 	"value": 0.15873, 
 	"unit": "S/m", 

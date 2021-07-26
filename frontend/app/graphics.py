@@ -9,6 +9,7 @@ import io
 import math
 import json
 import base64
+import pandas as pd
 
 from numpy import linspace
 import matplotlib.pyplot as plt
@@ -369,21 +370,6 @@ def view_model_inputs(array,nerve,xform=None):
 
 
 
-
-
-
-def view_extracellular_fields(dframe,elec,fasc):
-
-    
-    print(dframe)
-    print(elec)
-    print(fasc)
-    
-    df = px.data.iris()
-    fig = dframe.scatter_3d(df, x='sepal_length', y='sepal_width', z='petal_width',
-                  color='species')
-
-    return fig
 
 
 

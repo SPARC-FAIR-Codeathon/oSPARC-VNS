@@ -392,6 +392,8 @@ def add_callbacks(app):
     if not opts: return default, None, True
     return opts, opts[0]['value'], False
 
+    # TODO here: if url changed refresh and trigger refresh cascade
+
 
   # MAJOR callback: update device representation based on user IO 
   @app.callback(Output("device-json","data"),
@@ -445,7 +447,7 @@ def add_callbacks(app):
         if e_select:
               eti = this['array']['ElectrodeTypeIndex'][e_select[0]]
         else: eti = this['array']['ElectrodeTypeIndex'][-1]
-        this['array']['ElectrodeTypeIndex'].append(eti)
+        this['array']['ElectrodeAngle'].append(this['array']['ElectrodeAngle'][eti])
         return this
 
     elif clicked=='rem-elec': 
@@ -559,7 +561,7 @@ def add_callbacks(app):
                   Input("upload-device","filename"),
                   Input("upload-device","contents"), 
                   Input("download-device","data"),
-                  # State("navbar-session","value"),
+                  State("navbar-session","value"),
                   prevent_initial_call=True)
   def upload_device(name,data,dl_data,session=1):
     if name is None or data is None: raise PreventUpdate    
@@ -580,7 +582,7 @@ def add_callbacks(app):
   @app.callback(Output("download-device","data"),
                 Input("btn-save-array","n_clicks"), 
                 State("device-json","data"),
-                # State("navbar-session","value"),
+                State("navbar-session","value"),
                 prevent_initial_call=True)
   def save_array(n_clicks,data,session=1):
 
@@ -608,8 +610,8 @@ def add_callbacks(app):
                  State("nerve-name","children"),
                  State("nerve-name","style"),
                  State("axon-pop-dropdown","value"),
-                 State("anatomy-json","data"))
-                 #State("navbar-session","value"))
+                 State("anatomy-json","data"),
+                 State("navbar-session","value"))
   def upload_nerve(name,data,nx,ny,nr,nn,nn_style,ap,anat,session=1):
 
     USER = get_user_ID()
@@ -664,8 +666,8 @@ def add_callbacks(app):
     save_file(path,data)
     
     if file_ext[1] in ['.json']:
-      with open(path) as f: 
-        config = user_files.parse(f)        
+
+      config = user_files.parse(path)        
       config = config['nerve']
 
       if "xRotate" in config: nr = config["xRotate"]
@@ -721,7 +723,7 @@ def add_callbacks(app):
                 State("nerve-json","data"),
                 State("device-json","data"),
                 State("axon-pop-dropdown","value"),
-                #State("navbar-session","value"),
+                State("navbar-session","value"),
                 prevent_initial_call=True)
   def save_nerve_json(n_clicks,data,array,ap,session=1):
 
