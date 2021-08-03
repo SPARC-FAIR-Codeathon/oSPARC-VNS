@@ -16,7 +16,6 @@ from pathlib import Path
 import sys
 
 import secrets
-# from page_setup import get_user_ID
 
 cfg = secrets.Configuration
 

@@ -147,7 +147,7 @@ elseif isfield(G,'D') && ismember(numel(G.D), numel(layers)+[0 1 2])
 end
 
 if numel(layer_names) <= numel(layers)
-  for ii = numel(layer_names)+1 : numel(layers)
+  for ii = (numel(layer_names)+1) : numel(layers)
     layer_names{ii} = sprintf('Tissue_%02d',ii); 
   end
 end

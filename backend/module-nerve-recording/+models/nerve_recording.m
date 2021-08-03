@@ -175,8 +175,6 @@ if any(named('-raster')),
     
   end
 end
-    
-    
 
 warn_once = true; 
 check_folder = true; 
@@ -196,9 +194,7 @@ for i_rep = 1:n_rep
     waves = []; 
     raster = {}; 
     options = []; 
-    
-    % load raster input here ????? 
-    
+        
     for ty = 1:numel(pop)
         
       time = 0:(1/fs):(time_span);
