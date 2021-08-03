@@ -303,7 +303,26 @@ for i_rep = 1:n_rep
         get_raster_ = get_('-raster');
         opts.raster_opts.loop_indices = [i_coh i_freq i_rate i_rep ty]; 
         opts.raster = get_raster_(time,xy,opts.raster_opts); 
-      else opts.raster = models.random_raster(time,xy,opts.raster_opts);          
+      elseif strcmpi(settings.name,'sfap')          
+          
+        if i_freq == 1
+          pop(ty) = convert_to_sfap_sample(pop(ty),nerve);
+          xy = pop(ty).axon_xy;
+          grp = pop(ty).size_sample;
+          fid = pop(ty).fascicle;          
+        end
+        
+        sfap_id = find(pop(ty).size_sample == i_freq);
+        opts.raster.spk_time = 0*sfap_id;
+        opts.raster.spk_axon = sfap_id; 
+        opts.raster.bin_time = 0;
+        opts.raster.bin_rate = 1;
+        opts.raster.pop_rate = 1;
+        
+        if isempty(sfap_id), time = []; break, end
+        
+        
+      else opts.raster = models.random_raster(time,xy,opts.raster_opts);
       end
       
       gff = 10.^ceil(log10(nF+2)); % subgroup_id = gg + ff / 10 would fail for nF > 9
@@ -384,7 +403,7 @@ for i_rep = 1:n_rep
       printf('Computing spatial summation of %d APs ... ',numel(opts.raster.spk_time))
       cache_path = tools.cache('path');
 
-      if nG*nF == 1 || ~opts.use_parallel
+      if nG*nF == 1 || ~opts.use_parallel || strcmpi(settings.name,'sfap')
         for ii = 1:(nG*nF)
           V{ii} = parfun_unpack(cache_path, @(g,f) ...
                         models.spike_to_wave(g+f/gff,time,        ...
@@ -591,6 +610,14 @@ opts(3).spikerate =  [.1 3; 0.75 1.5; 1 1; 1 30; 7.5 15; 10 10 ];
 opts(3).wave_path = 'burst'; 
 opts(3).file_scheme = 'epoch_k%0.1f_f%0.1f_c%0.1f (%%d).mat';
 opts(3).file_vector = @(ex,sr,fr,ch) [sr(2) fr ch]; 
+
+opts(4) = opts(1); 
+opts(4).name = 'sfap';
+opts(4).frequency = 1:24;
+opts(4).spikerate =  1; 
+opts(4).wave_path = 'sfap'; 
+opts(4).file_scheme = 'sfap_g%0.1f (%%d).mat';
+opts(4).file_vector = @(ex,sr,fr,ch) fr; 
 
 for x = 1:numel(opts)  
   if any(named(opts(x).name)), opts = opts(x); return, end  
@@ -838,3 +865,34 @@ if ~isempty(spk_pidx), raster.population_id = spk_pidx; end
 
 epochs.Data = raster; 
     % epochs.Data = validate_raster(raster); 
+    
+    
+function pop = convert_to_sfap_sample(pop,nerve)    
+
+load(['./input/axons/in/' pop.axon_model '/index.mat'],'sam')
+
+nF = size(nerve.outline,3);
+re_ = @(x) repmat(x,nF,1);
+
+pop.fibre_diam = re_(sam.fibre_diam); 
+if pop.myelinated, 
+    pop.axon_diam = re_(sam.axon_diam);
+    pop.g_ratio   = re_(sam.g_ratio);
+end
+
+nG = numel(sam.count); 
+
+pop.axon_xy = mean(nerve.outline(2:end,:,:),1); 
+pop.axon_xy = permute(repmat(pop.axon_xy,nG,1), [1 3 2]);
+pop.axon_xy = reshape(pop.axon_xy,[],2);
+pop.fascicle = reshape(ones(nG,1)*(1:nF),[],1);
+pop.size_sample = re_((1:nG)');
+
+ok = ~isnan(pop.fibre_diam); 
+
+for f = fieldnames(pop)'
+  if size(pop.(f{1}),1) ~= numel(ok), continue, end
+  pop.(f{1})(~ok,:) = []; 
+end
+
+

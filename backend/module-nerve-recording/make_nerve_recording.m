@@ -14,7 +14,8 @@ if nargin < 2 || isempty(fields_file)
   fields_file = './input/demo/extracellular-potential (1).mat'; 
 end
 
-if nargin < 3, spikes_string = 'flat[0.2,2]';
+if nargin < 3, spikes_string = 'sfap[]';
+  % spikes_string = 'flat[0.2,2]';
   fprintf('Arg 3 not set, using default spikes settings: ')
   fprintf('%s\n', spikes_string)
 end
@@ -73,15 +74,15 @@ elseif exist(spikes_file,'file')
 else
   %% Parse string command
   
-  entries = regexp(spikes_string,'(flat|burst)[^\]]+[^\,;\s]+','match'); 
+  entries = regexp(spikes_string,'(flat|burst|sfap)[^\]]+[^\,;\s]+','match'); 
   
   if isempty(entries)
-    warning('no flat[] or burst[] entries provided to %s', mfilename)
+    warning('no flat[], burst[], or sfap[] entries provided to %s', mfilename)
     entries = {'flat[0.2,2]'};
   end
   
   coherence = 1; % default coherence
-  repeats = 3;   % default # reps
+  repeats = 3;   % default # reps  
   
   for ii = 1:numel(entries)
       
@@ -108,6 +109,8 @@ else
        mnr_setting.wave_path = 'burst';
        mnr_setting.file_scheme = 'epoch_k%0.1f_w%0.1f_c%0.1f (%%d).mat';
        mnr_setting.file_vector = @(ex,sr,fr,ch) [sr(2) fr ch];
+     case 'sfap'
+       mnr_setting.n_reps = 1; repeats = 1; 
     end
     
     fprintf('Set intra-population coherence = %g\n', coherence);
