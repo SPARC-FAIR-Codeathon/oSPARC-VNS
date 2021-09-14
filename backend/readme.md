@@ -3,7 +3,7 @@
 
 this directory is for the oSPARC back-end model modules as developed by CE et al
 
-See also [ViNERS](wiki-link)
+See also [ViNERS](https://gitlab.unimelb.edu.au/lab-keast-osborne-release/ViNERS)
 
 The following modules will have been ported to oSPARC:
 
